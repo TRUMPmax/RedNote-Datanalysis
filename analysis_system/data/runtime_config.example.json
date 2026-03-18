@@ -1,0 +1,11 @@
+{
+  "PLATFORM": "xhs",
+  "KEYWORDS": "公开样本",
+  "LOGIN_TYPE": "cookie",
+  "CRAWLER_TYPE": "search",
+  "SAVE_DATA_OPTION": "csv",
+  "CRAWLER_MAX_NOTES_COUNT": 50,
+  "ENABLE_GET_COMMENTS": false,
+  "ENABLE_CDP_MODE": false,
+  "COOKIES": ""
+}

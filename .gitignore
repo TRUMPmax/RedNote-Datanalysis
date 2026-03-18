@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+.venv/
+.idea/
+.vscode/
+
+*.log
+*.err
+*.pid
+
+analysis_system/data/runtime_config.json
+
+public_datasets/

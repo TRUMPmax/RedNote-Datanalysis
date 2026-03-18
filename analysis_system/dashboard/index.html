@@ -1,0 +1,1700 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>小红书数据分析平台</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/echarts/map/js/china.js"></script>
+<style>
+  :root {
+    --xhs-red: #FF2442;
+    --xhs-pink: #FF6B81;
+    --bg: #f5f7fa;
+    --card: #ffffff;
+    --card2: #f0f2f5;
+    --border: #e1e4e8;
+    --text: #1f2328;
+    --muted: #656d76;
+    --accent: #0969da;
+    --green: #1a7f37;
+    --yellow: #9a6700;
+    --blue: #0550ae;
+    --orange: #bc4c00;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif; min-height: 100vh; }
+
+  /* 顶栏 */
+  .topbar {
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky; top: 0; z-index: 100;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .logo { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 15px; }
+  .logo-icon {
+    width: 28px; height: 28px; border-radius: 6px;
+    background: linear-gradient(135deg, var(--xhs-red), var(--xhs-pink));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; color: white;
+  }
+  .topbar-right { display: flex; align-items: center; gap: 12px; }
+  
+  .filter-group { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .filter-label { font-size: 12px; color: var(--muted); }
+  .filter-select, .filter-input {
+    background: var(--card2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 13px;
+    outline: none;
+  }
+  .filter-select:focus, .filter-input:focus { border-color: var(--accent); }
+  .filter-input { width: 120px; }
+
+  .btn {
+    background: var(--accent);
+    border: none;
+    color: white;
+    padding: 6px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    transition: background .2s;
+  }
+  .btn:hover { background: #0550ae; }
+  .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
+  .btn-outline:hover { background: var(--card2); }
+
+  /* 导航 */
+  .nav-tabs {
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    display: flex;
+    gap: 4px;
+  }
+  .nav-tab {
+    padding: 14px 18px;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--muted);
+    border-bottom: 2px solid transparent;
+    transition: all .2s;
+  }
+  .nav-tab:hover { color: var(--text); }
+  .nav-tab.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 500; }
+
+  /* 内容 */
+  .content { padding: 20px 24px 28px; max-width: 1360px; margin: 0 auto; }
+  .tab-pane { display: none; }
+  .tab-pane.active { display: block; }
+
+  /* 统计卡片 */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+  .kpi-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+  }
+  .kpi-label { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+  .kpi-value { font-size: 24px; font-weight: 600; color: var(--text); }
+  .kpi-sub { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+  /* 图表卡片 */
+  .chart-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+  .chart-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+  }
+  .chart-card.wide { grid-column: 1 / -1; }
+  .chart-title { font-size: 14px; font-weight: 500; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+  .chart-title .tag { font-size: 11px; background: var(--card2); padding: 2px 8px; border-radius: 4px; color: var(--muted); }
+  .chart-container { position: relative; width: 100%; min-height: 280px; }
+  #card-likes-trend.wide { grid-column: 1 / -1; }
+  .chart-card.tight { padding-bottom: 10px; }
+  .table-card { overflow: hidden; }
+  .geo-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.6fr) minmax(320px, 1fr);
+    gap: 16px;
+    align-items: start;
+  }
+  .geo-map {
+    width: 100%;
+    height: 430px;
+    background: linear-gradient(180deg, #fff 0%, #fff7f8 100%);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+  }
+  .geo-side { display: flex; flex-direction: column; gap: 12px; }
+  .geo-mini-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .geo-mini-card {
+    background: var(--card2);
+    border-radius: 8px;
+    padding: 12px;
+  }
+  .geo-mini-label { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+  .geo-mini-value { font-size: 20px; font-weight: 600; color: var(--text); }
+  .geo-mini-sub { font-size: 11px; color: var(--muted); margin-top: 4px; }
+  .geo-focus {
+    background: var(--card2);
+    border-radius: 8px;
+    padding: 12px;
+    font-size: 13px;
+    color: var(--text);
+    line-height: 1.8;
+  }
+  .geo-table-wrap {
+    max-height: 320px;
+    overflow: auto;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+  }
+  .geo-table-wrap table { margin: 0; }
+  .geo-active-row td { background: #fff1f2 !important; }
+  .geo-empty {
+    background: var(--card2);
+    border-radius: 8px;
+    padding: 16px;
+    color: var(--muted);
+    font-size: 13px;
+  }
+  .info-card {
+    background: linear-gradient(180deg, #fff8f9 0%, #fff 100%);
+    border: 1px dashed #f3b7c1;
+    border-radius: 10px;
+    padding: 14px 16px;
+    color: var(--text);
+    font-size: 13px;
+    line-height: 1.8;
+  }
+  .info-card strong { color: var(--xhs-red); }
+  .muted-note { color: var(--muted); font-size: 12px; }
+
+  /* 表格 */
+  .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .data-table th {
+    background: var(--card2);
+    color: var(--muted);
+    padding: 10px 12px;
+    text-align: left;
+    font-weight: 500;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  .data-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .data-table tr:hover td { background: #fafbfc; }
+  
+  .rank-num {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 22px; height: 22px;
+    border-radius: 4px;
+    background: var(--card2);
+    font-size: 12px; font-weight: 600;
+    color: var(--muted);
+  }
+  .rank-num.gold { background: #fff8c5; color: #9a6700; }
+  .rank-num.silver { background: #f0f0f0; color: #656d76; }
+  .rank-num.bronze { background: #fff0d6; color: #bc4c00; }
+
+  .link-a { color: var(--accent); text-decoration: none; }
+  .link-a:hover { text-decoration: underline; }
+
+  /* 空状态 */
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--muted);
+  }
+  .empty-state .icon { font-size: 32px; margin-bottom: 12px; opacity: 0.5; }
+  .empty-state .tip { font-size: 13px; line-height: 1.6; }
+  .empty-state code { background: var(--card2); padding: 2px 6px; border-radius: 4px; font-family: monospace; }
+
+  /* 加载 */
+  .loading-overlay {
+    position: fixed; inset: 0;
+    background: rgba(255,255,255,0.9);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 9999;
+  }
+  .loading-overlay.hidden { display: none; }
+  .spinner {
+    width: 32px; height: 32px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin .8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  @media (max-width: 768px) {
+    .chart-grid { grid-template-columns: 1fr; }
+    .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    .filter-group { flex-wrap: wrap; }
+    .geo-layout { grid-template-columns: 1fr; }
+    .geo-map { height: 380px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loading"><div class="spinner"></div></div>
+
+<!-- 顶栏 -->
+<div class="topbar">
+  <div class="logo">
+    <div class="logo-icon">X</div>
+    <span>小红书数据分析</span>
+  </div>
+  <div class="topbar-right">
+    <div class="filter-group">
+      <select class="filter-select" id="keyword-filter" onchange="onFilterChange()">
+        <option value="">全部关键词</option>
+      </select>
+      
+      <select class="filter-select" id="sort-filter" onchange="onFilterChange()">
+        <option value="liked_count">按点赞</option>
+        <option value="collected_count">按收藏</option>
+        <option value="comment_count">按评论</option>
+        <option value="share_count">按分享</option>
+      </select>
+
+      <input type="number" class="filter-input" id="min-likes" placeholder="最低点赞" onchange="onFilterChange()">
+      
+      <button class="btn" onclick="loadAll()">查询</button>
+      <button class="btn btn-outline" onclick="resetFilter()">重置</button>
+    </div>
+  </div>
+</div>
+
+<!-- 导航 -->
+<div class="nav-tabs">
+  <div class="nav-tab active" onclick="switchTab('overview')">数据概览</div>
+  <div class="nav-tab" onclick="switchTab('notes')">笔记列表</div>
+  <div class="nav-tab" onclick="switchTab('text')">文本分析</div>
+  <div class="nav-tab" onclick="switchTab('trend')">趋势分析</div>
+  <div class="nav-tab" onclick="switchTab('crawl')">爬虫配置</div>
+</div>
+
+<div class="content">
+
+  <!-- 数据概览 -->
+  <div class="tab-pane active" id="tab-overview">
+    <div class="kpi-grid" id="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-label">笔记总数</div>
+        <div class="kpi-value" id="kpi-notes">-</div>
+        <div class="kpi-sub" id="kpi-notes-sub">-</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">评论总数</div>
+        <div class="kpi-value" id="kpi-comments">-</div>
+        <div class="kpi-sub" id="kpi-comments-sub">-</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">总点赞</div>
+        <div class="kpi-value" id="kpi-likes">-</div>
+        <div class="kpi-sub" id="kpi-likes-sub">均值 -</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">总收藏</div>
+        <div class="kpi-value" id="kpi-collects">-</div>
+        <div class="kpi-sub" id="kpi-collects-sub">均值 -</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">总互动</div>
+        <div class="kpi-value" id="kpi-total">-</div>
+        <div class="kpi-sub">点赞+收藏+评论+分享</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">活跃作者</div>
+        <div class="kpi-value" id="kpi-authors">-</div>
+        <div class="kpi-sub" id="kpi-authors-sub">-</div>
+      </div>
+    </div>
+
+    <div class="chart-grid">
+      <div class="chart-card wide">
+        <div class="chart-title">
+          地域热力图
+          <span class="tag">按关键词联动</span>
+          <select class="filter-select" id="geo-metric" onchange="renderGeoSection(latestStatsData)" style="margin-left:auto;min-width:150px">
+            <option value="author_count">按博主人数</option>
+            <option value="note_count">按笔记数量</option>
+            <option value="avg_likes">按平均点赞</option>
+            <option value="total_interactions">按总互动量</option>
+            <option value="avg_interactions">按平均互动</option>
+          </select>
+        </div>
+        <div class="geo-layout">
+          <div id="chart-region-map" class="geo-map"></div>
+          <div class="geo-side">
+            <div class="geo-mini-grid" id="geo-summary-wrap"></div>
+            <div class="geo-focus" id="geo-focus-wrap">点击地图区域后，这里会显示该地区的博主和互动概况。</div>
+            <div>
+              <div class="chart-title" style="margin-bottom:8px">地区榜单</div>
+              <div class="geo-table-wrap" id="geo-region-table-wrap"></div>
+            </div>
+            <div>
+              <div class="chart-title" style="margin-bottom:8px">海外分布</div>
+              <div class="geo-table-wrap" id="geo-overseas-wrap"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="chart-card tight">
+        <div class="chart-title">IP属地分布 <span class="tag">Top 15</span></div>
+        <div class="chart-container"><canvas id="chart-location"></canvas></div>
+      </div>
+      <div class="chart-card tight">
+        <div class="chart-title">发布时间分布 <span class="tag">按小时</span></div>
+        <div class="chart-container"><canvas id="chart-hour"></canvas></div>
+      </div>
+      <div class="chart-card wide tight">
+        <div class="chart-title">热门话题 <span class="tag">Top 20</span></div>
+        <div class="chart-container"><canvas id="chart-tags"></canvas></div>
+      </div>
+    </div>
+
+    <div class="chart-card wide table-card">
+      <div class="chart-title">热门笔记榜单 <span class="tag">Top 10</span></div>
+      <div id="top-notes-wrap"></div>
+    </div>
+
+    <div class="chart-card wide table-card">
+      <div class="chart-title">作者活跃排行 <span class="tag">Top 10</span></div>
+      <div id="author-table-wrap"></div>
+    </div>
+  </div>
+
+  <!-- 笔记列表 -->
+  <div class="tab-pane" id="tab-notes">
+    <div class="chart-card wide" style="margin-bottom:16px">
+      <div class="chart-title">笔记列表 <span class="tag" id="notes-count">0</span></div>
+      <div style="margin-bottom:12px;display:flex;gap:8px;align-items:center">
+        <input type="text" class="filter-input" id="search-input" placeholder="搜索标题/作者" style="width:200px" oninput="filterNotes()">
+        <span style="font-size:12px;color:var(--muted)" id="filter-info"></span>
+      </div>
+      <div id="notes-table-wrap"></div>
+    </div>
+  </div>
+
+  <!-- 文本分析 -->
+  <div class="tab-pane" id="tab-text">
+    <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr)">
+      <div class="kpi-card">
+        <div class="kpi-label">正面笔记</div>
+        <div class="kpi-value" id="sent-pos" style="color:var(--green)">-</div>
+        <div class="kpi-sub" id="sent-pos-r">-</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">中性笔记</div>
+        <div class="kpi-value" id="sent-neu">-</div>
+        <div class="kpi-sub" id="sent-neu-r">-</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">负面笔记</div>
+        <div class="kpi-value" id="sent-neg" style="color:var(--xhs-red)">-</div>
+        <div class="kpi-sub" id="sent-neg-r">-</div>
+      </div>
+    </div>
+
+    <div class="chart-grid">
+      <div class="chart-card">
+        <div class="chart-title">笔记关键词 Top 30</div>
+        <div class="chart-container"><canvas id="chart-note-kw"></canvas></div>
+      </div>
+      <div class="chart-card" id="card-comment-kw">
+        <div class="chart-title">评论关键词 Top 30</div>
+        <div class="chart-container"><canvas id="chart-comment-kw"></canvas></div>
+      </div>
+      <div class="chart-card" id="card-likes-trend">
+        <div class="chart-title">笔记情感分布</div>
+        <div class="chart-container"><canvas id="chart-sentiment"></canvas></div>
+      </div>
+      <div class="chart-card" id="card-comment-sentiment">
+        <div class="chart-title">评论情感分布</div>
+        <div class="chart-container"><canvas id="chart-comment-sentiment"></canvas></div>
+      </div>
+    </div>
+
+    <div class="info-card" id="comment-text-notice" style="display:none;margin-bottom:16px"></div>
+
+    <div class="chart-card wide">
+      <div class="chart-title">热门话题标签</div>
+      <div id="hashtag-cloud" style="padding:8px 0;display:flex;flex-wrap:wrap;gap:6px"></div>
+    </div>
+  </div>
+
+  <!-- 趋势分析 -->
+  <div class="tab-pane" id="tab-trend">
+    <div class="chart-card wide" style="margin-bottom:16px">
+      <div class="chart-title">每日发布趋势</div>
+      <div class="chart-container"><canvas id="chart-daily"></canvas></div>
+    </div>
+    <div class="chart-grid">
+      <div class="chart-card">
+        <div class="chart-title">每日点赞均值趋势</div>
+        <div class="chart-container"><canvas id="chart-likes-trend"></canvas></div>
+      </div>
+      <div class="chart-card" id="card-comment-trend">
+        <div class="chart-title">评论时间分布</div>
+        <div class="chart-container"><canvas id="chart-comment-trend"></canvas></div>
+      </div>
+    </div>
+    <div class="info-card" id="comment-trend-notice" style="display:none;margin-bottom:16px"></div>
+    <div class="chart-card wide">
+      <div class="chart-title">爆款笔记 <span class="tag">超均值5倍</span></div>
+      <div id="viral-table"></div>
+    </div>
+  </div>
+
+  <!-- 爬虫配置 -->
+  <div class="tab-pane" id="tab-crawl">
+    <div class="chart-grid">
+      <div class="chart-card">
+        <div class="chart-title">公开数据导入 <span class="tag" id="public-data-tag">待导入</span></div>
+
+        <div style="font-size:13px;color:var(--muted);margin-bottom:12px">
+          小红书当前反爬较重，这里优先接入公开数据源做分析和可视化演示。
+        </div>
+
+        <div style="margin-bottom:8px;font-size:13px;color:var(--muted)">公开数据源</div>
+        <select class="filter-select" id="public-dataset-id" style="width:100%;margin-bottom:12px" onchange="renderPublicDatasetMeta()"></select>
+
+        <div style="margin-bottom:8px;font-size:13px;color:var(--muted)">导入后的关键词标签</div>
+        <input type="text" class="filter-input" id="public-keyword-label" placeholder="如：公开样本 / 留学话题样本" style="width:100%;margin-bottom:12px">
+
+        <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);margin-bottom:12px">
+          <input type="checkbox" id="public-replace-existing">
+          导入前清理同一公开数据源的旧版本
+        </label>
+
+        <div id="public-dataset-meta" style="background:var(--card2);padding:12px;border-radius:6px;font-size:12px;color:var(--muted);margin-bottom:12px">
+          正在读取公开数据源列表...
+        </div>
+
+        <div style="display:flex;gap:8px;margin-bottom:12px">
+          <button class="btn" onclick="importPublicDataset()" style="flex:1">导入并刷新面板</button>
+          <button class="btn btn-outline" onclick="loadPublicDatasets(false)" style="flex:1">刷新源列表</button>
+        </div>
+
+        <div id="public-import-result" style="background:var(--card2);padding:12px;border-radius:6px;font-size:12px;color:var(--muted)">
+          导入完成后，这里的数据会自动转成标准 CSV，并直接进入概览、文本分析和趋势图。
+        </div>
+      </div>
+
+      <!-- 爬虫控制面板 -->
+      <div class="chart-card">
+        <div class="chart-title">爬虫控制 <span class="tag" id="crawl-status-tag">空闲</span></div>
+        
+        <div style="margin-bottom:16px">
+          <div style="margin-bottom:8px;font-size:13px;color:var(--muted)">搜索关键词（用逗号分隔多个）</div>
+          <input type="text" class="filter-input" id="crawl-keywords" placeholder="如: 副业推荐,编程学习,兼职赚钱" style="width:100%;margin-bottom:12px">
+          
+          <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+            <select class="filter-select" id="crawl-type" style="flex:1">
+              <option value="search">关键词搜索</option>
+              <option value="detail">指定URL</option>
+            </select>
+            <select class="filter-select" id="crawl-login-type" style="flex:1">
+              <option value="cookie">手动 Cookie 登录</option>
+              <option value="qrcode">扫码登录</option>
+            </select>
+            <select class="filter-select" id="crawl-max" style="flex:1">
+              <option value="50">采集50条</option>
+              <option value="100">采集100条</option>
+              <option value="200">采集200条</option>
+              <option value="500">采集500条</option>
+            </select>
+            <select class="filter-select" id="crawl-save-option" style="flex:1">
+              <option value="csv">保存为 CSV</option>
+              <option value="sqlite">保存为 SQLite</option>
+              <option value="json">保存为 JSON</option>
+            </select>
+          </div>
+
+          <div style="margin-bottom:8px;font-size:13px;color:var(--muted)">完整 Cookie（推荐直接粘贴浏览器复制出的整串）</div>
+          <textarea class="filter-input" id="crawl-cookies" placeholder="示例: a1=...; web_session=...; webId=...; ..." style="width:100%;min-height:96px;resize:vertical;margin-bottom:12px"></textarea>
+
+          <div style="margin-bottom:8px;font-size:13px;color:var(--muted)">可选：单独覆盖 web_session</div>
+          <input type="text" class="filter-input" id="crawl-web-session" placeholder="如果你只更新了 web_session，可以单独粘贴在这里" style="width:100%;margin-bottom:12px">
+
+          <div id="credential-summary" style="background:var(--card2);padding:12px;border-radius:6px;font-size:12px;color:var(--muted);margin-bottom:12px">
+            当前尚未保存 Cookie，建议先粘贴完整 Cookie 后再启动爬虫。
+          </div>
+          
+          <div style="display:flex;gap:8px">
+            <button class="btn" id="btn-start-crawl" onclick="startCrawl()" style="flex:1;background:var(--green)">启动爬虫</button>
+            <button class="btn btn-outline" id="btn-stop-crawl" onclick="stopCrawl()" style="flex:1" disabled>停止</button>
+          </div>
+        </div>
+        
+        <!-- 实时状态 -->
+        <div id="crawl-status" style="background:var(--card2);padding:12px;border-radius:6px;font-size:12px;display:none">
+          <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+            <span style="color:var(--muted)">运行时间</span>
+            <span id="crawl-runtime">0秒</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+            <span style="color:var(--muted)">已采集笔记</span>
+            <span id="crawl-notes" style="font-weight:600">0</span>
+          </div>
+          <div style="display:flex;justify-content:space-between">
+            <span style="color:var(--muted)">已采集评论</span>
+            <span id="crawl-comments" style="font-weight:600">0</span>
+          </div>
+        </div>
+        
+        <!-- 日志输出 -->
+        <div style="margin-top:12px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <span style="font-size:13px;color:var(--muted)">运行日志</span>
+            <button class="btn btn-outline" onclick="refreshLogs()" style="padding:2px 8px;font-size:11px">刷新</button>
+          </div>
+          <pre id="crawl-logs" style="background:#1e1e1e;color:#d4d4d4;padding:10px;border-radius:6px;font-size:11px;max-height:200px;overflow:auto;white-space:pre-wrap;word-break:break-all">等待启动...</pre>
+        </div>
+      </div>
+      
+      <!-- 登录控制 -->
+      <div class="chart-card">
+        <div class="chart-title">登录控制 <span class="tag" id="login-status-tag">未登录</span></div>
+        
+        <div style="margin-bottom:16px">
+          <div style="font-size:13px;color:var(--muted);margin-bottom:12px">
+            使用扫码登录需要在弹出的浏览器窗口中使用小红书APP扫描二维码
+          </div>
+          
+          <div style="display:flex;gap:8px;margin-bottom:12px">
+            <button class="btn" id="btn-login" onclick="startLogin()" style="flex:1">打开扫码登录</button>
+            <button class="btn btn-outline" id="btn-stop-login" onclick="stopLogin()" style="flex:1">停止</button>
+          </div>
+          
+          <div id="login-tips" style="background:var(--card2);padding:12px;border-radius:6px;font-size:12px;color:var(--muted)">
+            登录后可采集更多数据，建议使用Cookie登录以获得更好的稳定性
+          </div>
+        </div>
+        
+        <!-- 配置信息 -->
+        <div style="margin-top:16px">
+          <div class="chart-title" style="margin-bottom:8px">当前配置</div>
+          <div id="config-items"></div>
+        </div>
+        
+          <div style="margin-top:16px">
+            <div class="chart-title" style="margin-bottom:8px">保存配置</div>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-outline" onclick="saveConfig()" style="flex:1">保存配置与凭证</button>
+            </div>
+          </div>
+        </div>
+      </div>
+  </div>
+
+</div>
+
+<script>
+// 全局状态
+let currentKeyword = '';
+let allNotes = [];
+let allComments = [];
+let filteredNotes = [];
+let chartInstances = {};
+let crawlFormHydrated = false;
+let publicDatasets = [];
+let latestStatsData = null;
+let geoMapChart = null;
+let selectedGeoRegion = '';
+
+const fmt = n => {
+  if (n === null || n === undefined || n === '-') return '-';
+  n = Number(n);
+  if (n >= 10000) return (n / 10000).toFixed(1) + 'w';
+  if (n >= 1000) return (n / 1000).toFixed(1) + 'k';
+  return n.toLocaleString();
+};
+const fmtPct = n => (n || 0).toFixed(1) + '%';
+const $ = id => document.getElementById(id);
+const showLoading = () => $('loading').classList.remove('hidden');
+const hideLoading = () => $('loading').classList.add('hidden');
+
+function destroyChart(id) {
+  if (chartInstances[id]) { chartInstances[id].destroy(); delete chartInstances[id]; }
+}
+function createChart(id, config) {
+  destroyChart(id);
+  const canvas = $(id);
+  if (!canvas) return null;
+  const chart = new Chart(canvas, config);
+  chartInstances[id] = chart;
+  return chart;
+}
+
+function destroyGeoMap() {
+  if (geoMapChart) {
+    geoMapChart.dispose();
+    geoMapChart = null;
+  }
+}
+
+window.addEventListener('resize', () => {
+  Object.values(chartInstances).forEach(chart => {
+    try { chart.resize(); } catch (e) {}
+  });
+  if (geoMapChart) {
+    try { geoMapChart.resize(); } catch (e) {}
+  }
+});
+
+const COLORS = ['#FF2442','#FF6B81','#0969da','#1a7f37','#9a6700','#bc4c00','#8250df','#0550ae','#cf222e','#57606a','#8b5cf6','#14b8a6'];
+const GEO_METRICS = {
+  author_count: { label: '博主人数', formatter: value => fmt(value) },
+  note_count: { label: '笔记数量', formatter: value => fmt(value) },
+  avg_likes: { label: '平均点赞', formatter: value => fmt(value) },
+  total_interactions: { label: '总互动量', formatter: value => fmt(value) },
+  avg_interactions: { label: '平均互动', formatter: value => fmt(value) },
+};
+
+function collectCrawlForm() {
+  return {
+    keywords: $('crawl-keywords').value.trim(),
+    crawl_type: $('crawl-type').value,
+    login_type: $('crawl-login-type').value,
+    max_count: parseInt($('crawl-max').value, 10),
+    save_data_option: $('crawl-save-option').value,
+    cookies: $('crawl-cookies').value.trim(),
+    web_session: $('crawl-web-session').value.trim(),
+  };
+}
+
+function buildQuery(path, params = {}) {
+  const query = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value === undefined || value === null || value === '') return;
+    query.set(key, String(value));
+  });
+  const queryString = query.toString();
+  return queryString ? `${path}?${queryString}` : path;
+}
+
+function parseMetricValue(value) {
+  if (value === null || value === undefined || value === '') return 0;
+  let text = String(value).trim().replace(/,/g, '');
+  if (!text) return 0;
+  if (text.endsWith('w') || text.endsWith('W')) return (parseFloat(text) || 0) * 10000;
+  if (text.endsWith('k') || text.endsWith('K')) return (parseFloat(text) || 0) * 1000;
+  return parseFloat(text) || 0;
+}
+
+function syncCrawlForm(data) {
+  if (!data || data.error) return;
+  if (!crawlFormHydrated) {
+    $('crawl-keywords').value = data.KEYWORDS || '';
+    $('crawl-type').value = data.CRAWLER_TYPE || 'search';
+    $('crawl-login-type').value = data.LOGIN_TYPE || 'cookie';
+    $('crawl-max').value = String(data.CRAWLER_MAX_NOTES_COUNT || 50);
+    $('crawl-save-option').value = data.SAVE_DATA_OPTION || 'csv';
+    crawlFormHydrated = true;
+  }
+
+  $('credential-summary').innerHTML = data.HAS_COOKIES
+    ? `已保存 ${data.cookie_count || 0} 项 Cookie，web_session：${data.web_session_masked || '-'}`
+    : '当前未保存有效 Cookie，公开数据模式下也可以直接做分析。';
+}
+
+async function refreshKeywordOptions(preferredKeyword = '') {
+  try {
+    const r = await fetch('/api/keywords');
+    const d = await r.json();
+    const sel = $('keyword-filter');
+    const currentValue = preferredKeyword || currentKeyword || sel.value;
+    sel.innerHTML = '<option value="">全部关键词</option>';
+    (d.keywords || []).forEach(kw => {
+      const opt = document.createElement('option');
+      opt.value = kw;
+      opt.textContent = kw;
+      sel.appendChild(opt);
+    });
+    if ([...sel.options].some(opt => opt.value === currentValue)) {
+      sel.value = currentValue;
+      currentKeyword = currentValue;
+    } else {
+      currentKeyword = '';
+      sel.value = '';
+    }
+  } catch (e) {}
+}
+
+function renderPublicDatasetMeta() {
+  const select = $('public-dataset-id');
+  const meta = publicDatasets.find(item => item.id === select.value);
+  if (!meta) {
+    $('public-dataset-meta').innerHTML = '暂无可用的公开数据源。';
+    return;
+  }
+
+  $('public-data-tag').textContent = meta.recommended ? '推荐' : '公开';
+  if (!$('public-keyword-label').value.trim()) {
+    $('public-keyword-label').value = meta.default_keyword || '';
+  }
+  $('public-dataset-meta').innerHTML = `
+    <div style="margin-bottom:6px"><strong>${meta.name}</strong></div>
+    <div style="margin-bottom:6px">${meta.description || ''}</div>
+    <div>授权：${meta.license || '-'}</div>
+    <div>本地文件：${meta.local_available ? '已检测到' : '未检测到'}</div>
+    <div>适配当前面板：${meta.import_supported ? '支持' : '不支持'}</div>
+    <div style="margin-top:6px"><a href="${meta.source_url}" target="_blank" class="link-a">查看来源</a></div>
+  `;
+}
+
+async function loadPublicDatasets(keepSelection = true) {
+  try {
+    const res = await fetch('/api/public_datasets');
+    const data = await res.json();
+    publicDatasets = data.datasets || [];
+    const select = $('public-dataset-id');
+    const previous = keepSelection ? select.value : '';
+    select.innerHTML = '';
+
+    publicDatasets.forEach(item => {
+      const opt = document.createElement('option');
+      opt.value = item.id;
+      opt.textContent = item.name + (item.recommended ? '（推荐）' : '');
+      select.appendChild(opt);
+    });
+
+    const previousMatch = publicDatasets.find(item => item.id === previous);
+    const recommendedMatch = publicDatasets.find(item => item.recommended);
+    const nextValue =
+      (previousMatch ? previousMatch.id : '') ||
+      (recommendedMatch ? recommendedMatch.id : '') ||
+      (publicDatasets.length ? publicDatasets[0].id : '') ||
+      '';
+
+    if (nextValue) {
+      select.value = nextValue;
+    }
+    renderPublicDatasetMeta();
+  } catch (e) {
+    $('public-dataset-meta').innerHTML = '公开数据源列表读取失败。';
+  }
+}
+
+async function importPublicDataset() {
+  const datasetId = $('public-dataset-id').value;
+  const keywordLabel = $('public-keyword-label').value.trim();
+  const replaceExisting = $('public-replace-existing').checked;
+
+  if (!datasetId) {
+    alert('请先选择公开数据源');
+    return;
+  }
+
+  $('public-import-result').innerHTML = '正在导入公开数据，请稍候...';
+
+  try {
+    const res = await fetch('/api/public_datasets/import', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        dataset_id: datasetId,
+        keyword_label: keywordLabel,
+        replace_existing: replaceExisting,
+      })
+    });
+    const data = await res.json();
+
+    if (!data.success) {
+      $('public-import-result').innerHTML = `<span style="color:var(--xhs-red)">${data.message || '导入失败'}</span>`;
+      return;
+    }
+
+    const result = data.result || {};
+    $('public-import-result').innerHTML = `
+      <div style="color:var(--green);margin-bottom:6px">导入成功</div>
+      <div>数据源：${result.dataset_name || '-'}</div>
+      <div>关键词标签：${result.keyword_label || '-'}</div>
+      <div>笔记数：${result.notes_count || 0}</div>
+      <div>输出文件：${result.output_path || '-'}</div>
+    `;
+
+    await refreshKeywordOptions(result.keyword_label || '');
+    currentKeyword = result.keyword_label || '';
+    $('keyword-filter').value = currentKeyword;
+    await loadAll();
+  } catch (e) {
+    $('public-import-result').innerHTML = `<span style="color:var(--xhs-red)">导入失败：${e}</span>`;
+  }
+}
+
+async function init() {
+  showLoading();
+  await loadPublicDatasets();
+  await refreshKeywordOptions();
+  await loadAll();
+  hideLoading();
+}
+
+async function loadAll() {
+  showLoading();
+  const keywordParam = currentKeyword || '';
+
+  const [statsR, textR, trendR, configR, notesR] = await Promise.allSettled([
+    fetch(buildQuery('/api/stats', { keyword: keywordParam })).then(r => r.json()),
+    fetch(buildQuery('/api/text', { keyword: keywordParam })).then(r => r.json()),
+    fetch(buildQuery('/api/trend', { keyword: keywordParam })).then(r => r.json()),
+    fetch('/api/crawl_config').then(r => r.json()),
+    fetch(buildQuery('/api/notes', { keyword: keywordParam })).then(r => r.json()),
+  ]);
+
+  const statsData = statsR.status === 'fulfilled' ? statsR.value : null;
+  const textData = textR.status === 'fulfilled' ? textR.value : null;
+  const trendData = trendR.status === 'fulfilled' ? trendR.value : null;
+  const configData = configR.status === 'fulfilled' ? configR.value : null;
+  const notesData = notesR.status === 'fulfilled' ? notesR.value : null;
+
+  allNotes = notesData && Array.isArray(notesData.data) ? notesData.data : [];
+  allComments = [];
+
+  renderOverview(statsData);
+  renderNotes(allNotes);
+  renderText(textData);
+  renderTrend(trendData);
+  renderConfig(configData);
+  hideLoading();
+}
+
+function onFilterChange() {
+  const nextKeyword = $('keyword-filter').value;
+  const keywordChanged = nextKeyword !== currentKeyword;
+  currentKeyword = nextKeyword;
+  if (keywordChanged) {
+    loadAll();
+    return;
+  }
+  filterNotes();
+}
+
+function resetFilter() {
+  $('keyword-filter').value = '';
+  $('sort-filter').value = 'liked_count';
+  $('min-likes').value = '';
+  $('search-input').value = '';
+  currentKeyword = '';
+  loadAll();
+}
+
+function switchTab(name) {
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  $(`tab-${name}`).classList.add('active');
+  const tab = typeof event !== 'undefined' ? event.target : null;
+  if (tab && tab.classList) {
+    tab.classList.add('active');
+  }
+}
+
+function emptyState(msg = '暂无数据') {
+  return `<div class="empty-state"><div class="tip">${msg}</div></div>`;
+}
+function renderGeoEmpty(message = '暂无地区数据') {
+  destroyGeoMap();
+  $('chart-region-map').innerHTML = `<div class="geo-empty" style="height:100%;display:flex;align-items:center;justify-content:center">${message}</div>`;
+  $('geo-summary-wrap').innerHTML = '';
+  $('geo-focus-wrap').innerHTML = message;
+  $('geo-region-table-wrap').innerHTML = `<div class="geo-empty">${message}</div>`;
+  $('geo-overseas-wrap').innerHTML = `<div class="geo-empty">暂无海外地区数据</div>`;
+}
+
+function renderGeoSection(data) {
+  if (!data || data.error || !data.geo_report) {
+    renderGeoEmpty('当前还没有可用于地域分析的数据。');
+    return;
+  }
+
+  const geo = data.geo_report || {};
+  const chinaRegions = geo.china_region_stats || [];
+  const overseasRegions = geo.overseas_distribution || [];
+  if (!chinaRegions.length) {
+    renderGeoEmpty('当前关键词下没有中国地区数据，暂时无法生成热力图。');
+    return;
+  }
+
+  const metric = $('geo-metric').value || 'author_count';
+  const metricMeta = GEO_METRICS[metric] || GEO_METRICS.author_count;
+  const rankedRegions = [...chinaRegions].sort((a, b) => (b[metric] || 0) - (a[metric] || 0));
+  const currentTopRegion = rankedRegions[0] || null;
+  const currentTopRegionName = currentTopRegion ? currentTopRegion.name : '-';
+  const currentTopRegionMetric = currentTopRegion ? (currentTopRegion[metric] || 0) : 0;
+  if (!selectedGeoRegion || !chinaRegions.some(item => item.name === selectedGeoRegion)) {
+    selectedGeoRegion = currentTopRegion ? currentTopRegion.name : '';
+  }
+  const focusRegion = chinaRegions.find(item => item.name === selectedGeoRegion) || rankedRegions[0];
+  const summary = geo.summary || {};
+
+  $('geo-summary-wrap').innerHTML = `
+    <div class="geo-mini-card">
+      <div class="geo-mini-label">覆盖省级地区</div>
+      <div class="geo-mini-value">${fmt(summary.domestic_region_count || 0)}</div>
+      <div class="geo-mini-sub">当前关键词下可映射到中国地图的地区数</div>
+    </div>
+    <div class="geo-mini-card">
+      <div class="geo-mini-label">国内博主数</div>
+      <div class="geo-mini-value">${fmt(summary.domestic_author_count || 0)}</div>
+      <div class="geo-mini-sub">按作者去重后的地区覆盖</div>
+    </div>
+    <div class="geo-mini-card">
+      <div class="geo-mini-label">海外地区数</div>
+      <div class="geo-mini-value">${fmt(summary.overseas_region_count || 0)}</div>
+      <div class="geo-mini-sub">海外/境外属地单独统计</div>
+    </div>
+    <div class="geo-mini-card">
+      <div class="geo-mini-label">当前最强地区</div>
+      <div class="geo-mini-value">${currentTopRegionName}</div>
+      <div class="geo-mini-sub">${metricMeta.label} ${metricMeta.formatter(currentTopRegionMetric)}</div>
+    </div>
+  `;
+
+  $('geo-focus-wrap').innerHTML = `
+    <div style="font-weight:600;font-size:15px;margin-bottom:6px">${focusRegion.name}</div>
+    <div>博主人数：<strong>${fmt(focusRegion.author_count)}</strong></div>
+    <div>笔记数量：<strong>${fmt(focusRegion.note_count)}</strong></div>
+    <div>平均点赞：<strong>${fmt(focusRegion.avg_likes)}</strong></div>
+    <div>总互动量：<strong>${fmt(focusRegion.total_interactions)}</strong></div>
+    <div>平均互动：<strong>${fmt(focusRegion.avg_interactions)}</strong></div>
+    <div>人均发文：<strong>${focusRegion.avg_notes_per_author}</strong></div>
+    <div style="color:var(--muted)">原始属地样本：${(focusRegion.raw_locations || []).join(' / ') || '-'}</div>
+  `;
+
+  $('geo-region-table-wrap').innerHTML = `
+    <table class="data-table">
+      <thead><tr><th>地区</th><th>${metricMeta.label}</th><th>博主数</th><th>笔记数</th><th>均点赞</th></tr></thead>
+      <tbody>
+        ${rankedRegions.slice(0, 12).map(region => `
+          <tr class="${region.name === focusRegion.name ? 'geo-active-row' : ''}" onclick="selectGeoRegion('${region.name}')">
+            <td>${region.name}</td>
+            <td>${metricMeta.formatter(region[metric] || 0)}</td>
+            <td>${fmt(region.author_count)}</td>
+            <td>${fmt(region.note_count)}</td>
+            <td>${fmt(region.avg_likes)}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+
+  if (overseasRegions.length) {
+    $('geo-overseas-wrap').innerHTML = `
+      <table class="data-table">
+        <thead><tr><th>地区</th><th>博主数</th><th>笔记数</th><th>总互动</th></tr></thead>
+        <tbody>
+          ${overseasRegions.slice(0, 8).map(region => `
+            <tr>
+              <td>${region.name}</td>
+              <td>${fmt(region.author_count)}</td>
+              <td>${fmt(region.note_count)}</td>
+              <td>${fmt(region.total_interactions)}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+  } else {
+    $('geo-overseas-wrap').innerHTML = '<div class="geo-empty">当前关键词下暂无海外地区数据</div>';
+  }
+
+  renderGeoMap(chinaRegions, metric, focusRegion.name);
+}
+
+function renderGeoMap(regions, metric, focusRegionName) {
+  const mapDom = $('chart-region-map');
+  if (!mapDom) return;
+  if (!window.echarts) {
+    mapDom.innerHTML = '<div class="geo-empty">地图组件加载失败，请刷新页面重试。</div>';
+    return;
+  }
+
+  destroyGeoMap();
+  mapDom.innerHTML = '';
+  geoMapChart = window.echarts.init(mapDom);
+  const metricMeta = GEO_METRICS[metric] || GEO_METRICS.author_count;
+  const seriesData = regions.map(region => ({
+    name: region.name,
+    value: Number(region[metric] || 0),
+    region,
+    selected: region.name === focusRegionName,
+  }));
+  const values = seriesData.map(item => item.value || 0);
+  const maxValue = Math.max(...values, 1);
+
+  geoMapChart.setOption({
+    backgroundColor: 'transparent',
+    tooltip: {
+      trigger: 'item',
+      formatter: params => {
+        const region = params.data ? params.data.region : null;
+        if (!region) return `${params.name}<br/>暂无数据`;
+        return [
+          `<strong>${region.name}</strong>`,
+          `${metricMeta.label}：${metricMeta.formatter(region[metric] || 0)}`,
+          `博主人数：${fmt(region.author_count)}`,
+          `笔记数量：${fmt(region.note_count)}`,
+          `平均点赞：${fmt(region.avg_likes)}`,
+          `总互动量：${fmt(region.total_interactions)}`,
+        ].join('<br/>');
+      }
+    },
+    visualMap: {
+      min: 0,
+      max: maxValue,
+      left: 12,
+      bottom: 12,
+      calculable: true,
+      text: ['高', '低'],
+      itemHeight: 100,
+      inRange: {
+        color: ['#fff7f8', '#ffb0ba', '#ff6b81', '#ff2442']
+      },
+      textStyle: { color: '#656d76' }
+    },
+    series: [{
+      name: metricMeta.label,
+      type: 'map',
+      map: 'china',
+      roam: false,
+      selectedMode: 'single',
+      label: {
+        show: false,
+        color: '#1f2328',
+      },
+      emphasis: {
+        label: { show: true, color: '#1f2328', fontWeight: 600 },
+        itemStyle: { areaColor: '#ff8ea0' }
+      },
+      select: {
+        label: { show: true, color: '#1f2328', fontWeight: 600 },
+        itemStyle: { areaColor: '#ff8ea0', borderColor: '#cf222e', borderWidth: 1.2 }
+      },
+      itemStyle: {
+        borderColor: '#ffffff',
+        borderWidth: 1,
+      },
+      data: seriesData,
+    }]
+  });
+
+  geoMapChart.off('click');
+  geoMapChart.on('click', params => {
+    if (!params.name) return;
+    selectedGeoRegion = params.name;
+    renderGeoSection(latestStatsData);
+  });
+}
+
+function selectGeoRegion(regionName) {
+  selectedGeoRegion = regionName;
+  renderGeoSection(latestStatsData);
+}
+
+// ============ 渲染函数 ============
+
+function renderOverview(data) {
+  latestStatsData = data;
+  if (!data || data.error || !data.overview) {
+    $('kpi-notes').textContent = '0';
+    $('kpi-notes-sub').textContent = '暂无数据';
+    $('kpi-comments').textContent = '0';
+    $('kpi-comments-sub').textContent = '-';
+    $('kpi-likes').textContent = '0';
+    $('kpi-likes-sub').textContent = '均值 0';
+    $('kpi-collects').textContent = '0';
+    $('kpi-collects-sub').textContent = '均值 0';
+    $('kpi-total').textContent = '0';
+    $('kpi-authors').textContent = '0';
+    $('kpi-authors-sub').textContent = '等待导入';
+    $('author-table-wrap').innerHTML = emptyState('当前还没有可分析的数据，先到“公开数据导入”里导入一份样本。');
+    if ($('top-notes-wrap')) $('top-notes-wrap').innerHTML = emptyState('当前关键词下暂无热门笔记。');
+    destroyChart('chart-location');
+    destroyChart('chart-hour');
+    destroyChart('chart-tags');
+    renderGeoEmpty('当前没有可用于地域分析的数据。');
+    return;
+  }
+
+  const ov = data.overview;
+  const interaction = data.interaction_stats || {};
+  const liked = interaction.liked || {};
+  const collected = interaction.collected || {};
+
+  $('kpi-notes').textContent = fmt(ov.note_count);
+  $('kpi-notes-sub').textContent = currentKeyword ? `关键词：${currentKeyword}` : '全部数据';
+  $('kpi-comments').textContent = fmt(ov.comment_count);
+  $('kpi-comments-sub').textContent = ov.has_comment_details
+    ? `评论明细 ${fmt(ov.comment_record_count || 0)} 条`
+    : '按笔记 comment_count 汇总';
+  $('kpi-likes').textContent = fmt(liked.total || 0);
+  $('kpi-likes-sub').textContent = `均值 ${fmt(liked.avg || 0)}`;
+  $('kpi-collects').textContent = fmt(collected.total || 0);
+  $('kpi-collects-sub').textContent = `均值 ${fmt(collected.avg || 0)}`;
+  $('kpi-total').textContent = fmt(interaction.total_interactions || 0);
+  $('kpi-authors').textContent = fmt(ov.author_count || 0);
+  $('kpi-authors-sub').textContent = '按作者去重';
+
+  renderGeoSection(data);
+
+  const locData = data.location_distribution || [];
+  createChart('chart-location', {
+    type: 'bar',
+    data: {
+      labels: locData.map(([name]) => name || '未知'),
+      datasets: [{ label: '笔记数', data: locData.map(([, value]) => value), backgroundColor: COLORS[0] + '99', borderRadius: 4 }]
+    },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } }, y: { grid: { color: '#e1e4e8' } } } }
+  });
+
+  const hourData = data.time_distribution || {};
+  const hours = Array.from({ length: 24 }, (_, i) => i);
+  createChart('chart-hour', {
+    type: 'bar',
+    data: {
+      labels: hours.map(h => `${h}:00`),
+      datasets: [{ label: '笔记数', data: hours.map(h => hourData[h] || 0), backgroundColor: '#0969da99', borderRadius: 3 }]
+    },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } }, y: { grid: { color: '#e1e4e8' } } } }
+  });
+
+  const tagData = (data.tag_distribution || []).slice(0, 20);
+  createChart('chart-tags', {
+    type: 'bar',
+    data: {
+      labels: tagData.map(([tag]) => '#' + tag),
+      datasets: [{ label: '次数', data: tagData.map(([, value]) => value), backgroundColor: '#8250df99', borderRadius: 3 }]
+    },
+    options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { color: '#e1e4e8' } }, y: { grid: { display: false } } } }
+  });
+
+  const authors = data.author_leaderboard || [];
+  $('author-table-wrap').innerHTML = authors.length ? `
+    <table class="data-table">
+      <thead><tr><th style="width:50px">排名</th><th>作者</th><th>笔记数</th><th>总点赞</th><th>平均点赞</th></tr></thead>
+      <tbody>
+        ${authors.map((a, i) => {
+          const rc = i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : '';
+          return `<tr><td><span class="rank-num ${rc}">${i + 1}</span></td><td>${a.nickname || a.user_id || '-'}</td><td>${fmt(a.note_count)}</td><td>${fmt(a.total_likes)}</td><td>${fmt(a.avg_likes)}</td></tr>`;
+        }).join('')}
+      </tbody>
+    </table>` : emptyState('当前关键词下暂无作者数据');
+
+  const topNotes = data.top_notes || [];
+  if ($('top-notes-wrap')) {
+    $('top-notes-wrap').innerHTML = topNotes.length ? `
+      <table class="data-table">
+        <thead><tr><th style="width:50px">排名</th><th>标题</th><th>作者</th><th>点赞</th><th>评论</th></tr></thead>
+        <tbody>
+          ${topNotes.map((n, i) => {
+            const rc = i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : '';
+            return `<tr><td><span class="rank-num ${rc}">${i + 1}</span></td><td title="${n.title || ''}">${n.title || '(无标题)'}</td><td>${n.nickname || '-'}</td><td style="color:var(--xhs-red)">${fmt(n.liked_count)}</td><td>${fmt(n.comment_count)}</td></tr>`;
+          }).join('')}
+        </tbody>
+      </table>` : emptyState('当前关键词下暂无热门笔记。');
+  }
+}
+
+function renderNotes(notes) {
+  if (!Array.isArray(notes) || !notes.length) {
+    $('notes-count').textContent = '0';
+    $('filter-info').textContent = '';
+    $('notes-table-wrap').innerHTML = emptyState('当前关键词下暂无笔记列表数据');
+    return;
+  }
+  filterNotes();
+}
+
+function renderNotesTable(notes) {
+  $('notes-count').textContent = notes.length;
+  $('filter-info').textContent = notes.length !== (allNotes.length || 0) ? `已筛选 ${notes.length} 条` : `共 ${allNotes.length || 0} 条`;
+
+  if (!notes.length) {
+    $('notes-table-wrap').innerHTML = emptyState('当前筛选条件下没有匹配的笔记');
+    return;
+  }
+
+  $('notes-table-wrap').innerHTML = `
+    <div style="max-height:720px;overflow:auto">
+      <table class="data-table">
+        <thead><tr><th style="width:60px">#</th><th>标题</th><th>作者</th><th>点赞</th><th>收藏</th><th>评论</th><th>分享</th><th>属地</th><th>发布时间</th><th>链接</th></tr></thead>
+        <tbody>
+          ${notes.map((n, i) => {
+            const timeText = n.time ? new Date(Number(n.time) * 1000).toISOString().slice(0, 10) : '-';
+            return `<tr>
+              <td>${i + 1}</td>
+              <td title="${n.title || ''}">${n.title ? n.title.substring(0, 48) + (n.title.length > 48 ? '...' : '') : '(无标题)'}</td>
+              <td>${n.nickname || '-'}</td>
+              <td style="color:var(--xhs-red)">${fmt(n.liked_count)}</td>
+              <td>${fmt(n.collected_count)}</td>
+              <td>${fmt(n.comment_count)}</td>
+              <td>${fmt(n.share_count)}</td>
+              <td>${n.ip_location || '-'}</td>
+              <td>${timeText}</td>
+              <td>${n.note_url ? `<a href="${n.note_url}" target="_blank" class="link-a">查看</a>` : '-'}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+function filterNotes() {
+  const kw = $('search-input').value.trim().toLowerCase();
+  const minLikes = parseInt($('min-likes').value, 10) || 0;
+  const sortBy = $('sort-filter').value;
+
+  let notes = Array.isArray(allNotes) ? [...allNotes] : [];
+  if (kw) {
+    notes = notes.filter(n =>
+      (n.title && n.title.toLowerCase().includes(kw)) ||
+      (n.nickname && n.nickname.toLowerCase().includes(kw))
+    );
+  }
+  if (minLikes > 0) {
+    notes = notes.filter(n => parseMetricValue(n.liked_count) >= minLikes);
+  }
+
+  notes.sort((a, b) => parseMetricValue(b[sortBy]) - parseMetricValue(a[sortBy]));
+  filteredNotes = notes;
+  renderNotesTable(notes);
+}
+
+function renderText(data) {
+  if (!data || data.error) {
+    ['sent-pos','sent-neu','sent-neg'].forEach(id => { const el = $(id); if (el) el.textContent = '0'; });
+    $('hashtag-cloud').innerHTML = '<span style="color:var(--muted);font-size:13px">暂无文本分析数据</span>';
+    $('comment-text-notice').style.display = '';
+    $('comment-text-notice').innerHTML = '当前没有可用的文本分析数据。';
+    $('card-comment-kw').style.display = 'none';
+    $('card-comment-sentiment').style.display = 'none';
+    destroyChart('chart-note-kw');
+    destroyChart('chart-comment-kw');
+    destroyChart('chart-sentiment');
+    destroyChart('chart-comment-sentiment');
+    return;
+  }
+
+  const ns = data.note_sentiment || {};
+  const hasCommentDetails = !!(latestStatsData && latestStatsData.overview && latestStatsData.overview.has_comment_details);
+  $('sent-pos').textContent = fmt(ns.positive || 0);
+  $('sent-pos-r').textContent = fmtPct(ns.positive_ratio || 0);
+  $('sent-neu').textContent = fmt(ns.neutral || 0);
+  $('sent-neu-r').textContent = fmtPct(Math.max(0, 100 - (ns.positive_ratio || 0) - (ns.negative_ratio || 0)));
+  $('sent-neg').textContent = fmt(ns.negative || 0);
+  $('sent-neg-r').textContent = fmtPct(ns.negative_ratio || 0);
+
+  const nkws = (data.note_keywords || []).slice(0, 30);
+  createChart('chart-note-kw', {
+    type: 'bar',
+    data: { labels: nkws.map(([w]) => w), datasets: [{ label: '词频', data: nkws.map(([, v]) => v), backgroundColor: COLORS[6] + '99', borderRadius: 3 }] },
+    options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { color: '#e1e4e8' } }, y: { grid: { display: false } } } }
+  });
+
+  createChart('chart-sentiment', {
+    type: 'doughnut',
+    data: { labels: ['正向', '中性', '负向'], datasets: [{ data: [ns.positive || 0, ns.neutral || 0, ns.negative || 0], backgroundColor: ['#1a7f37', '#656d76', '#cf222e'], hoverOffset: 4 }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { padding: 12 } } } }
+  });
+
+  if (hasCommentDetails && (data.comment_keywords || []).length) {
+    const ckws = (data.comment_keywords || []).slice(0, 30);
+    $('card-comment-kw').style.display = '';
+    $('card-comment-sentiment').style.display = '';
+    $('comment-text-notice').style.display = 'none';
+    createChart('chart-comment-kw', {
+      type: 'bar',
+      data: { labels: ckws.map(([w]) => w), datasets: [{ label: '词频', data: ckws.map(([, v]) => v), backgroundColor: COLORS[2] + '99', borderRadius: 3 }] },
+      options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { color: '#e1e4e8' } }, y: { grid: { display: false } } } }
+    });
+
+    const cs = data.comment_sentiment || {};
+    createChart('chart-comment-sentiment', {
+      type: 'doughnut',
+      data: { labels: ['正向', '中性', '负向'], datasets: [{ data: [cs.positive || 0, cs.neutral || 0, cs.negative || 0], backgroundColor: ['#1a7f37', '#656d76', '#cf222e'], hoverOffset: 4 }] },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { padding: 12 } } } }
+    });
+  } else {
+    $('card-comment-kw').style.display = 'none';
+    $('card-comment-sentiment').style.display = 'none';
+    $('comment-text-notice').style.display = '';
+    $('comment-text-notice').innerHTML = '<strong>当前公开数据源没有评论正文。</strong> 评论总数已经按笔记级字段正常汇总，但评论关键词和评论情感图会自动隐藏。';
+    destroyChart('chart-comment-kw');
+    destroyChart('chart-comment-sentiment');
+  }
+
+  const tags = data.hashtags || [];
+  const cloud = $('hashtag-cloud');
+  if (!tags.length) {
+    cloud.innerHTML = '<span style="color:var(--muted);font-size:13px">暂无标签数据</span>';
+    return;
+  }
+  const maxCnt = tags[0][1] || 1;
+  cloud.innerHTML = tags.slice(0, 40).map(([tag, cnt]) => {
+    const size = 12 + Math.round((cnt / maxCnt) * 10);
+    return `<span style="font-size:${size}px;color:var(--accent);cursor:default" title="${cnt}次">#${tag}</span>`;
+  }).join('');
+}
+
+function renderTrend(data) {
+  const likesCard = $('card-likes-trend');
+  if (!data || data.error) {
+    $('viral-table').innerHTML = emptyState('暂无趋势数据');
+    $('card-comment-trend').style.display = 'none';
+    $('comment-trend-notice').style.display = '';
+    $('comment-trend-notice').innerHTML = '当前没有可用的评论趋势数据。';
+    if (likesCard) likesCard.classList.add('wide');
+    return;
+  }
+
+  const hasCommentDetails = !!(latestStatsData && latestStatsData.overview && latestStatsData.overview.has_comment_details);
+  const daily = data.publish_trend_daily || {};
+  const dailyKeys = Object.keys(daily).slice(-60);
+  createChart('chart-daily', {
+    type: 'line',
+    data: { labels: dailyKeys, datasets: [{ label: '发布量', data: dailyKeys.map(k => daily[k] || 0), borderColor: '#0969da', backgroundColor: '#0969da22', fill: true, tension: .3, pointRadius: 2, pointHoverRadius: 5 }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } }, y: { grid: { color: '#e1e4e8' } } } }
+  });
+
+  const likesTrend = data.likes_trend || {};
+  const ltKeys = Object.keys(likesTrend).slice(-60);
+  createChart('chart-likes-trend', {
+    type: 'line',
+    data: { labels: ltKeys, datasets: [{ label: '均点赞', data: ltKeys.map(k => likesTrend[k] || 0), borderColor: '#9a6700', backgroundColor: '#9a670022', fill: true, tension: .3, pointRadius: 2 }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } }, y: { grid: { color: '#e1e4e8' } } } }
+  });
+
+  const cmtTrend = data.comment_time_trend || {};
+  const ctKeys = Object.keys(cmtTrend).slice(-60);
+  if (hasCommentDetails && ctKeys.length) {
+    if (likesCard) likesCard.classList.remove('wide');
+    $('card-comment-trend').style.display = '';
+    $('comment-trend-notice').style.display = 'none';
+    createChart('chart-comment-trend', {
+      type: 'bar',
+      data: { labels: ctKeys, datasets: [{ label: '评论数', data: ctKeys.map(k => cmtTrend[k] || 0), backgroundColor: '#8250df99', borderRadius: 3 }] },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } }, y: { grid: { color: '#e1e4e8' } } } }
+    });
+  } else {
+    if (likesCard) likesCard.classList.add('wide');
+    $('card-comment-trend').style.display = 'none';
+    $('comment-trend-notice').style.display = '';
+    $('comment-trend-notice').innerHTML = '<strong>评论时间分布不可用。</strong> 当前公开样本只有每条笔记的评论总量，没有逐条评论时间，所以这里不会再显示空白图表。';
+    destroyChart('chart-comment-trend');
+  }
+
+  const viral = data.viral_notes || [];
+  $('viral-table').innerHTML = viral.length ? `
+    <table class="data-table">
+      <thead><tr><th>标题</th><th>作者</th><th>点赞</th><th>均值</th><th>倍数</th><th>链接</th></tr></thead>
+      <tbody>
+        ${viral.map(n => `<tr><td title="${n.title || ''}">${(n.title || '').substring(0, 40)}</td><td>${n.nickname || '-'}</td><td style="color:var(--xhs-red);font-weight:600">${fmt(n.liked_count)}</td><td>${fmt(n.avg_likes)}</td><td style="color:var(--green)">x${n.ratio}</td><td><a href="${n.note_url}" target="_blank" class="link-a">查看</a></td></tr>`).join('')}
+      </tbody>
+    </table>` : '<div style="color:var(--muted);padding:20px;font-size:13px">暂无爆款笔记</div>';
+}
+function renderConfig(data) {
+  if (!data || data.error) {
+    $('config-items').innerHTML = '<div style="color:var(--muted)">配置读取失败</div>';
+    return;
+  }
+
+  const items = [
+    ['目标平台', data.PLATFORM],
+    ['搜索关键词', data.KEYWORDS],
+    ['登录方式', data.LOGIN_TYPE],
+    ['抓取类型', data.CRAWLER_TYPE],
+    ['存储格式', data.SAVE_DATA_OPTION],
+    ['最大笔记数', data.CRAWLER_MAX_NOTES_COUNT],
+    ['抓取评论', data.ENABLE_GET_COMMENTS === 'True' ? '开启' : '关闭'],
+    ['CDP 模式', data.ENABLE_CDP_MODE === 'True' ? '开启' : '关闭'],
+    ['Cookie 状态', data.HAS_COOKIES ? `已保存 ${data.cookie_count || 0} 项` : '未保存'],
+    ['web_session', data.web_session_masked || '-'],
+  ];
+
+  $('config-items').innerHTML = items.map(([k, v]) => `
+    <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)">
+      <span style="color:var(--muted);font-size:13px">${k}</span>
+      <span style="font-size:13px;font-weight:500">${v || '-'}</span>
+    </div>
+  `).join('');
+
+  syncCrawlForm(data);
+
+  if (data.CRAWLER_AVAILABLE === false) {
+    $('crawl-status-tag').textContent = '未接入';
+    $('crawl-status-tag').style.background = 'var(--card2)';
+    $('btn-start-crawl').disabled = true;
+    $('btn-stop-crawl').disabled = true;
+    $('btn-login').disabled = true;
+    $('login-status-tag').textContent = '已停用';
+    $('login-status-tag').style.background = 'var(--card2)';
+    $('credential-summary').innerHTML = '当前工作区未检测到爬虫后端，建议直接使用左侧的公开数据导入功能。';
+    $('login-tips').innerHTML = '<span style="color:var(--muted)">扫码登录功能已停用，当前模式下仅保留公开数据分析。</span>';
+    $('crawl-logs').textContent = '当前未接入 MediaCrawler-main，已切换到公开数据分析模式。';
+  }
+}
+
+let crawlStatusTimer = null;
+
+async function startCrawl() {
+  const payload = collectCrawlForm();
+  if (!payload.keywords) {
+    alert('请输入搜索关键词');
+    return;
+  }
+
+  if (payload.login_type === 'cookie' && !payload.cookies && !payload.web_session) {
+    const keepGoing = confirm('当前没有在表单里填写新的 Cookie，是否继续尝试使用已保存的 Cookie？');
+    if (!keepGoing) return;
+  }
+
+  $('btn-start-crawl').disabled = true;
+  $('btn-start-crawl').textContent = '启动中...';
+
+  try {
+    const res = await fetch('/api/crawler/start', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+
+    if (!data.success) {
+      alert(data.message || '启动失败');
+      $('btn-start-crawl').disabled = false;
+      $('btn-start-crawl').textContent = '启动爬虫';
+      return;
+    }
+
+    $('crawl-status').style.display = 'block';
+    $('btn-start-crawl').textContent = '运行中';
+    $('btn-stop-crawl').disabled = false;
+    $('crawl-status-tag').textContent = '运行中';
+    $('crawl-status-tag').style.background = 'var(--green)';
+    $('crawl-status-tag').style.color = 'white';
+
+    if (crawlStatusTimer) clearInterval(crawlStatusTimer);
+    crawlStatusTimer = setInterval(updateCrawlStatus, 3000);
+  } catch (e) {
+    alert('请求失败: ' + e);
+    $('btn-start-crawl').disabled = false;
+    $('btn-start-crawl').textContent = '启动爬虫';
+  }
+}
+
+async function stopCrawl() {
+  try {
+    const res = await fetch('/api/crawler/stop', { method: 'POST' });
+    const data = await res.json();
+    if (!data.success) {
+      alert(data.message || '停止失败');
+      return;
+    }
+    $('btn-start-crawl').disabled = false;
+    $('btn-start-crawl').textContent = '启动爬虫';
+    $('btn-stop-crawl').disabled = true;
+    $('crawl-status-tag').textContent = '已停止';
+    $('crawl-status-tag').style.background = 'var(--card2)';
+    if (crawlStatusTimer) {
+      clearInterval(crawlStatusTimer);
+      crawlStatusTimer = null;
+    }
+  } catch (e) {
+    alert('停止失败: ' + e);
+  }
+}
+
+async function updateCrawlStatus() {
+  try {
+    const res = await fetch('/api/crawler/status');
+    const data = await res.json();
+    $('crawl-runtime').textContent = formatRuntime(data.runtime || 0);
+    $('crawl-notes').textContent = data.notes_collected || 0;
+    $('crawl-comments').textContent = data.comments_collected || 0;
+    $('crawl-logs').textContent = (data.recent_logs || []).join('\n');
+    $('crawl-logs').scrollTop = $('crawl-logs').scrollHeight;
+
+    if (data.status === 'stopped') {
+      $('crawl-status-tag').textContent = '已完成';
+      $('crawl-status-tag').style.background = 'var(--card2)';
+      $('btn-start-crawl').disabled = false;
+      $('btn-start-crawl').textContent = '启动爬虫';
+      $('btn-stop-crawl').disabled = true;
+      if (crawlStatusTimer) {
+        clearInterval(crawlStatusTimer);
+        crawlStatusTimer = null;
+      }
+      await loadAll();
+    }
+  } catch (e) {
+    console.error('状态更新失败:', e);
+  }
+}
+
+function formatRuntime(seconds) {
+  if (!seconds) return '0秒';
+  if (seconds < 60) return seconds + '秒';
+  if (seconds < 3600) return Math.floor(seconds / 60) + '分' + (seconds % 60) + '秒';
+  return Math.floor(seconds / 3600) + '小时' + Math.floor((seconds % 3600) / 60) + '分';
+}
+
+async function refreshLogs() {
+  await updateCrawlStatus();
+}
+
+async function startLogin(force = false) {
+  $('btn-login').disabled = true;
+  $('btn-login').textContent = '正在启动浏览器...';
+
+  try {
+    const res = await fetch('/api/login/qrcode', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ force })
+    });
+    const data = await res.json();
+
+    if (!data.success) {
+      if (data.can_force && confirm('登录窗口已在运行，是否强制关闭并重新打开？')) {
+        await fetch('/api/login/stop', { method: 'POST' });
+        await new Promise(r => setTimeout(r, 1000));
+        startLogin(true);
+        return;
+      }
+      $('login-tips').innerHTML = `<span style="color:var(--xhs-red)">${data.message || '启动失败'}</span>`;
+      $('btn-login').disabled = false;
+      $('btn-login').textContent = '打开扫码登录';
+      return;
+    }
+
+    $('login-tips').innerHTML = '<span style="color:var(--green)">已打开浏览器窗口，请使用小红书 APP 扫描二维码登录</span>';
+    $('login-status-tag').textContent = '扫码中';
+    $('login-status-tag').style.background = 'var(--yellow)';
+    setTimeout(checkLoginStatus, 5000);
+  } catch (e) {
+    $('login-tips').innerHTML = '<span style="color:var(--xhs-red)">请求失败: ' + e + '</span>';
+    $('btn-login').disabled = false;
+    $('btn-login').textContent = '打开扫码登录';
+  }
+}
+
+async function checkLoginStatus() {
+  try {
+    const res = await fetch('/api/login/status');
+    const data = await res.json();
+
+    if (data.status === 'success') {
+      $('login-status-tag').textContent = '已登录';
+      $('login-status-tag').style.background = 'var(--green)';
+      $('login-status-tag').style.color = 'white';
+      $('login-tips').innerHTML = '<span style="color:var(--green)">登录成功！凭证已自动保存，现在可以启动爬虫了</span>';
+      $('btn-login').textContent = '已登录';
+      $('crawl-login-type').value = 'cookie';
+      await loadAll();
+    } else if (data.status === 'failed') {
+      $('login-status-tag').textContent = '登录失败';
+      $('login-status-tag').style.background = 'var(--xhs-red)';
+      $('login-tips').innerHTML = '<span style="color:var(--xhs-red)">登录失败，请重试</span>';
+      $('btn-login').disabled = false;
+      $('btn-login').textContent = '打开扫码登录';
+    } else if (data.status === 'waiting' || data.status === 'starting') {
+      setTimeout(checkLoginStatus, 3000);
+    } else {
+      $('login-status-tag').textContent = '未登录';
+      $('login-status-tag').style.background = 'var(--card2)';
+      $('btn-login').disabled = false;
+      $('btn-login').textContent = '打开扫码登录';
+    }
+  } catch (e) {
+    console.error('登录状态检查失败:', e);
+    $('btn-login').disabled = false;
+    $('btn-login').textContent = '打开扫码登录';
+  }
+}
+
+async function stopLogin() {
+  try {
+    await fetch('/api/login/stop', { method: 'POST' });
+    $('login-status-tag').textContent = '已停止';
+    $('login-status-tag').style.background = 'var(--card2)';
+    $('login-tips').innerHTML = '<span style="color:var(--muted)">登录流程已停止</span>';
+    $('btn-login').disabled = false;
+    $('btn-login').textContent = '打开扫码登录';
+  } catch (e) {
+    alert('停止失败: ' + e);
+  }
+}
+
+async function saveConfig() {
+  const payload = collectCrawlForm();
+  if (!payload.keywords && !payload.cookies && !payload.web_session) {
+    alert('请至少填写关键词或 Cookie 凭证中的一项');
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/config/save', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+
+    if (!data.success) {
+      alert('保存失败: ' + data.message);
+      return;
+    }
+
+    alert('配置已保存');
+    loadAll();
+  } catch (e) {
+    alert('请求失败: ' + e);
+  }
+}
+
+
+// 启动
+init();
+</script>
+</body>
+</html>
+
+
+
