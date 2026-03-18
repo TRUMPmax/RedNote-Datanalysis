@@ -2,13 +2,19 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$PythonBin,
 
-    [Parameter(Mandatory = $true)]
-    [string]$ScriptDir,
+    [string]$ScriptDir = "",
 
     [int]$Port = 8080
 )
 
 $ErrorActionPreference = "Stop"
+
+$PythonBin = $PythonBin.Trim('"')
+if ([string]::IsNullOrWhiteSpace($ScriptDir)) {
+    $ScriptDir = Split-Path -Parent $PSCommandPath
+}
+$ScriptDir = $ScriptDir.Trim('"')
+$ScriptDir = $ScriptDir.TrimEnd('\', '/')
 
 $scriptPath = [System.IO.Path]::GetFullPath((Join-Path $ScriptDir "app.py"))
 $pidFile = Join-Path $ScriptDir "server.pid"

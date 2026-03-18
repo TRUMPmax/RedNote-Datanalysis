@@ -2,6 +2,7 @@
 setlocal
 
 set "SCRIPT_DIR=%~dp0"
+if "%SCRIPT_DIR:~-1%"=="\" set "SCRIPT_DIR=%SCRIPT_DIR:~0,-1%"
 cd /d "%SCRIPT_DIR%"
 
 set "PYTHON_BIN=python"
@@ -11,8 +12,6 @@ if exist "%SCRIPT_DIR%..\..\.venv\Scripts\python.exe" (
 
 set "APP_URL=http://127.0.0.1:8080"
 set "PORT=8080"
-set "APP_SCRIPT=%SCRIPT_DIR%app.py"
-
 echo.
 echo ==================================================
 echo     XHS Analysis Launcher
@@ -34,7 +33,7 @@ if /I "%PYTHON_BIN%"=="python" (
     )
 )
 
-echo [1/3] Checking dependencies...
+echo [1/4] Checking dependencies...
 "%PYTHON_BIN%" -m pip show flask >nul 2>&1
 if errorlevel 1 (
     echo     Installing requirements...
@@ -59,15 +58,17 @@ if errorlevel 1 (
 echo     Dependencies ready.
 
 echo [2/4] Restarting project server...
-powershell -NoProfile -ExecutionPolicy Bypass -File "%SCRIPT_DIR%start_server.ps1" -PythonBin "%PYTHON_BIN%" -ScriptDir "%SCRIPT_DIR%" -Port %PORT%
+powershell -NoProfile -ExecutionPolicy Bypass -File "%SCRIPT_DIR%\start_server.ps1" -PythonBin "%PYTHON_BIN%" -ScriptDir "%SCRIPT_DIR%" -Port %PORT%
 if errorlevel 1 (
     echo [ERROR] Failed to restart the web server.
     pause
     exit /b 1
 )
 
+echo [3/4] Waiting for server...
+timeout /t 2 /nobreak >nul
+
 echo [4/4] Opening browser...
-timeout /t 3 /nobreak >nul
 start "" "%APP_URL%"
 
 echo.
