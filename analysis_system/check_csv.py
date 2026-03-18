@@ -1,16 +1,27 @@
 # -*- coding: utf-8 -*-
-"""检查CSV数据"""
-import os
-import glob
+"""检查 CSV 数据。"""
+from pathlib import Path
 
-data_dir = r"e:\PyProject\RedNote_Learning\MediaCrawler-main\data\xhs"
-csv_files = glob.glob(os.path.join(data_dir, "*.csv"))
-print(f"CSV文件数量: {len(csv_files)}")
-for f in csv_files:
-    fname = os.path.basename(f)
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+DATA_DIR_CANDIDATES = [
+    PROJECT_ROOT / "analysis_system" / "data" / "xhs",
+    PROJECT_ROOT / "MediaCrawler-main" / "data" / "xhs",
+]
+
+data_dir = next((path for path in DATA_DIR_CANDIDATES if path.exists()), None)
+if data_dir is None:
+    print("未找到可用的 CSV 数据目录。")
+    raise SystemExit(0)
+
+csv_files = sorted(data_dir.glob("*.csv"))
+print(f"数据目录: {data_dir.relative_to(PROJECT_ROOT)}")
+print(f"CSV 文件数量: {len(csv_files)}")
+
+for file_path in csv_files:
     try:
-        with open(f, "r", encoding="utf-8", errors="ignore") as fp:
-            lines = fp.readlines()
-        print(f"  {fname}: {len(lines)} 行")
-    except Exception as e:
-        print(f"  {fname}: 读取失败 - {e}")
+        with file_path.open("r", encoding="utf-8-sig", errors="ignore") as file_obj:
+            lines = file_obj.readlines()
+        print(f"  {file_path.name}: {len(lines)} 行")
+    except Exception as exc:
+        print(f"  {file_path.name}: 读取失败 - {exc}")
