@@ -14,6 +14,8 @@ def _safe_print(value: object) -> None:
 
 def main() -> None:
     endpoints = [
+        "/",
+        "/static/vendor/echarts.min.js",
         "/api/health",
         "/api/dashboard",
         "/api/overview",

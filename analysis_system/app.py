@@ -18,7 +18,7 @@ from analyzer.common import clean_text, safe_int
 from analyzer.data_loader import DataLoader
 
 
-app = Flask(__name__, static_folder=None)
+app = Flask(__name__, static_folder="static", static_url_path="/static")
 app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
 app.json.ensure_ascii = False
 
