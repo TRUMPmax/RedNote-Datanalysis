@@ -1,51 +1,44 @@
-# -*- coding: utf-8 -*-
-import subprocess
-import time
-import requests
+from __future__ import annotations
+
+import json
 import sys
-import os
 
-# 启动服务器
-print("Starting server...")
-p = subprocess.Popen(
-    [sys.executable, "app.py"],
-    stdout=subprocess.PIPE,
-    stderr=subprocess.STDOUT,
-    cwd=os.path.dirname(os.path.abspath(__file__)) or "."
-)
+from app import app
 
-# 等待启动
-time.sleep(4)
 
-try:
-    # 测试各个 API
-    tests = [
-        ("/api/crawl_config", "GET", None),
-        ("/api/crawler/status", "GET", None),
+def _safe_print(value: object) -> None:
+    text = str(value)
+    encoding = sys.stdout.encoding or "utf-8"
+    print(text.encode(encoding, errors="replace").decode(encoding, errors="replace"))
+
+
+def main() -> None:
+    endpoints = [
+        "/api/health",
+        "/api/dashboard",
+        "/api/overview",
+        "/api/opinion",
+        "/api/content",
+        "/api/relationship",
+        "/api/clusters",
+        "/api/summary",
+        "/api/quality",
+        "/api/notes?limit=3&sort_by=quality_score",
+        "/api/comments?limit=3&sentiment=negative",
     ]
-    
-    for path, method, body in tests:
-        try:
-            url = f"http://127.0.0.1:8080{path}"
-            if method == "GET":
-                r = requests.get(url, timeout=5)
+
+    with app.test_client() as client:
+        for endpoint in endpoints:
+            response = client.get(endpoint)
+            _safe_print(f"{endpoint}: {response.status_code}")
+            body = response.get_json(silent=True)
+            if isinstance(body, dict):
+                payload = json.dumps(body, ensure_ascii=False)
+                _safe_print(payload[:300])
             else:
-                r = requests.post(url, json=body, timeout=5)
-            print(f"{path}: {r.status_code} - {r.text[:100]}")
-        except Exception as e:
-            print(f"{path}: ERROR - {e}")
-    
-    # 测试启动爬虫
-    print("\nTrying to start crawler...")
-    try:
-        r = requests.post("http://127.0.0.1:8080/api/crawler/start", 
-                        json={"keywords": "测试", "login_type": "cookie", "max_count": 10}, 
-                        timeout=5)
-        print(f"/api/crawler/start: {r.status_code} - {r.text[:200]}")
-    except Exception as e:
-        print(f"/api/crawler/start: ERROR - {e}")
-    
-finally:
-    p.terminate()
-    p.wait()
-    print("\nDone!")
+                _safe_print((response.get_data(as_text=True) or "")[:300])
+            _safe_print("-" * 60)
+
+
+if __name__ == "__main__":
+    main()

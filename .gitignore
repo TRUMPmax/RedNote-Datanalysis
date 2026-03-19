@@ -14,3 +14,7 @@ __pycache__/
 analysis_system/data/runtime_config.json
 
 public_datasets/
+MediaCrawler-main/
+analysis_system/data/processed/
+任务书-小红书数据采集和分析系统的设计与实现-班级姓名【参考模板2】.docx
+开题报告-小红书数据采集和分析系统的设计与实现-班级姓名.docx

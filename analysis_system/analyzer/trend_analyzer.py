@@ -1,191 +1,123 @@
-# -*- coding: utf-8 -*-
-"""
-趋势分析器 - 时间序列趋势、关键词热度变化
-"""
-from typing import List, Dict, Any, Tuple
-from collections import defaultdict
-from datetime import datetime, timedelta
-import re
+from __future__ import annotations
 
+from collections import Counter, defaultdict
+from typing import Any, Dict, List
 
-def _parse_ts(ts) -> datetime:
-    """解析时间戳"""
-    try:
-        ts = int(ts)
-        if ts > 1e12:
-            ts = ts // 1000
-        return datetime.fromtimestamp(ts)
-    except:
-        return None
+from .common import clean_text, safe_int
 
 
 class TrendAnalyzer:
-    """趋势分析：时间序列下的内容热度与话题演变"""
-
-    def __init__(self, notes: List[Dict], comments: List[Dict] = None):
-        self.notes = notes
+    def __init__(self, notes: List[Dict[str, Any]], comments: List[Dict[str, Any]] | None = None):
+        self.notes = notes or []
         self.comments = comments or []
 
-    def get_publish_trend(self, granularity: str = "day") -> Dict[str, int]:
-        """笔记发布量趋势（day/week/month）"""
-        trend = defaultdict(int)
-        for n in self.notes:
-            dt = _parse_ts(n.get("time"))
-            if not dt:
-                continue
-            if granularity == "day":
-                key = dt.strftime("%Y-%m-%d")
-            elif granularity == "week":
-                # ISO year-week
-                key = f"{dt.isocalendar()[0]}-W{dt.isocalendar()[1]:02d}"
-            elif granularity == "month":
-                key = dt.strftime("%Y-%m")
-            else:
-                key = dt.strftime("%Y-%m-%d")
-            trend[key] += 1
-        return dict(sorted(trend.items()))
+    def _group_note_metric(self, key_field: str, metric_field: str | None = None) -> Dict[str, float]:
+        totals: Dict[str, float] = defaultdict(float)
+        counts: Dict[str, int] = defaultdict(int)
 
-    def get_interaction_trend(self, metric: str = "liked_count", granularity: str = "day") -> Dict[str, float]:
-        """某指标的时间趋势（均值）"""
-        trend_sum = defaultdict(float)
-        trend_count = defaultdict(int)
-        for n in self.notes:
-            dt = _parse_ts(n.get("time"))
-            if not dt:
+        for note in self.notes:
+            key = clean_text(note.get(key_field))
+            if not key:
                 continue
-            if granularity == "day":
-                key = dt.strftime("%Y-%m-%d")
-            elif granularity == "week":
-                key = f"{dt.isocalendar()[0]}-W{dt.isocalendar()[1]:02d}"
+            if metric_field:
+                totals[key] += safe_int(note.get(metric_field))
+                counts[key] += 1
             else:
-                key = dt.strftime("%Y-%m")
-            try:
-                val_str = str(n.get(metric, "0") or "0")
-                val_str = val_str.replace(",", "")
-                if "万" in val_str:
-                    val = float(val_str.replace("万", "")) * 10000
-                else:
-                    val = float(val_str)
-            except:
-                val = 0
-            trend_sum[key] += val
-            trend_count[key] += 1
-        result = {
-            k: round(trend_sum[k] / trend_count[k], 1)
-            for k in sorted(trend_sum.keys())
+                totals[key] += 1
+
+        if not metric_field:
+            return dict(sorted((key, int(value)) for key, value in totals.items()))
+
+        return {
+            key: round(totals[key] / counts[key], 2)
+            for key in sorted(totals.keys())
+            if counts[key]
         }
-        return result
 
-    def get_keyword_trend(self, keywords: List[str], granularity: str = "day") -> Dict[str, Dict[str, int]]:
-        """多关键词在时间上的热度对比（出现次数）"""
-        trend = defaultdict(lambda: defaultdict(int))
-        for n in self.notes:
-            dt = _parse_ts(n.get("time"))
-            if not dt:
-                continue
-            if granularity == "day":
-                key = dt.strftime("%Y-%m-%d")
-            elif granularity == "week":
-                key = f"{dt.isocalendar()[0]}-W{dt.isocalendar()[1]:02d}"
-            else:
-                key = dt.strftime("%Y-%m")
-            text = f"{n.get('title', '')} {n.get('desc', '')}"
-            for kw in keywords:
-                if kw in text:
-                    trend[kw][key] += 1
-        # 转为正常 dict
-        return {kw: dict(sorted(v.items())) for kw, v in trend.items()}
+    def get_publish_trend(self, granularity: str = "day") -> Dict[str, int]:
+        if granularity == "month":
+            monthly: Dict[str, int] = defaultdict(int)
+            for note in self.notes:
+                date_text = clean_text(note.get("publish_date"))
+                if len(date_text) >= 7:
+                    monthly[date_text[:7]] += 1
+            return dict(sorted(monthly.items()))
 
-    def get_hot_topics_by_period(self, top_n: int = 5, days: int = 7) -> List[Dict]:
-        """最近 N 天的热门话题"""
-        cutoff = datetime.now() - timedelta(days=days)
-        recent_notes = []
-        for n in self.notes:
-            dt = _parse_ts(n.get("time"))
-            if dt and dt >= cutoff:
-                recent_notes.append(n)
+        if granularity == "week":
+            weekly: Dict[str, int] = defaultdict(int)
+            for note in self.notes:
+                date_text = clean_text(note.get("publish_date"))
+                if len(date_text) >= 10:
+                    year = date_text[:4]
+                    weekly[f"{year}-W{self._week_number(date_text):02d}"] += 1
+            return dict(sorted(weekly.items()))
 
-        # 统计话题标签
-        from collections import Counter
-        tag_counter = Counter()
-        for n in recent_notes:
-            tag_str = n.get("tag_list", "") or ""
-            tags = [t.strip() for t in tag_str.split(",") if t.strip()]
-            tag_counter.update(tags)
+        return self._group_note_metric("publish_date")
 
-        return [
-            {"tag": tag, "count": cnt}
-            for tag, cnt in tag_counter.most_common(top_n)
-        ]
+    def get_interaction_trend(self, metric: str = "liked_count") -> Dict[str, float]:
+        return self._group_note_metric("publish_date", metric_field=metric)
 
-    def detect_viral_notes(self, threshold_ratio: float = 5.0) -> List[Dict]:
-        """检测爆款笔记（点赞量超过平均值 threshold_ratio 倍）"""
-        if not self.notes:
-            return []
+    def get_hot_topics_by_period(self, top_n: int = 10) -> List[Dict[str, Any]]:
+        counter = Counter()
+        for note in self.notes:
+            for tag in note.get("tag_list", []) or []:
+                tag_text = clean_text(tag)
+                if tag_text:
+                    counter[tag_text] += 1
+        return [{"tag": tag, "count": count} for tag, count in counter.most_common(top_n)]
 
-        likes = []
-        for n in self.notes:
-            try:
-                v = str(n.get("liked_count", "0") or "0")
-                v = v.replace(",", "")
-                if "万" in v:
-                    likes.append(float(v.replace("万", "")) * 10000)
-                else:
-                    likes.append(float(v))
-            except:
-                likes.append(0)
-
+    def detect_viral_notes(self, threshold_ratio: float = 5.0) -> List[Dict[str, Any]]:
+        likes = [safe_int(note.get("liked_count")) for note in self.notes]
         if not likes:
             return []
+
         avg_likes = sum(likes) / len(likes)
         threshold = avg_likes * threshold_ratio
-
-        viral = []
-        for i, n in enumerate(self.notes):
-            if likes[i] >= threshold:
-                viral.append({
-                    "note_id": n.get("note_id"),
-                    "title": (n.get("title") or n.get("desc", ""))[:60],
-                    "liked_count": int(likes[i]),
-                    "avg_likes": round(avg_likes, 1),
-                    "ratio": round(likes[i] / max(avg_likes, 1), 1),
-                    "nickname": n.get("nickname", ""),
-                    "note_url": n.get("note_url", "")
-                })
-        return sorted(viral, key=lambda x: x["liked_count"], reverse=True)
-
-    def get_comment_time_trend(self, granularity: str = "day") -> Dict[str, int]:
-        """评论发布时间趋势"""
-        trend = defaultdict(int)
-        for c in self.comments:
-            dt = _parse_ts(c.get("create_time"))
-            if not dt:
+        viral_notes: List[Dict[str, Any]] = []
+        for note in self.notes:
+            liked_count = safe_int(note.get("liked_count"))
+            if liked_count < threshold:
                 continue
-            if granularity == "day":
-                key = dt.strftime("%Y-%m-%d")
-            elif granularity == "week":
-                key = f"{dt.isocalendar()[0]}-W{dt.isocalendar()[1]:02d}"
-            else:
-                key = dt.strftime("%Y-%m")
-            trend[key] += 1
+            viral_notes.append(
+                {
+                    "note_id": note.get("note_id", ""),
+                    "title": note.get("title") or note.get("desc", ""),
+                    "nickname": note.get("nickname", ""),
+                    "liked_count": liked_count,
+                    "avg_likes": round(avg_likes, 2),
+                    "ratio": round(liked_count / max(avg_likes, 1), 2),
+                    "publish_date": note.get("publish_date", ""),
+                    "note_url": note.get("note_url", ""),
+                }
+            )
+        viral_notes.sort(key=lambda item: item["liked_count"], reverse=True)
+        return viral_notes
+
+    def get_comment_time_trend(self) -> Dict[str, int]:
+        trend: Dict[str, int] = defaultdict(int)
+        for comment in self.comments:
+            date_text = clean_text(comment.get("create_date"))
+            if date_text:
+                trend[date_text] += 1
         return dict(sorted(trend.items()))
 
-    def get_growth_rate(self, granularity: str = "day") -> Dict[str, float]:
-        """笔记发布量环比增长率"""
-        trend = self.get_publish_trend(granularity)
-        if len(trend) < 2:
-            return {}
-        keys = sorted(trend.keys())
-        growth = {}
-        for i in range(1, len(keys)):
-            prev = trend[keys[i - 1]]
-            curr = trend[keys[i]]
-            if prev > 0:
-                rate = round((curr - prev) / prev * 100, 1)
+    def get_growth_rate(self) -> Dict[str, float]:
+        daily = self.get_publish_trend("day")
+        dates = sorted(daily.keys())
+        growth: Dict[str, float] = {}
+        for index in range(1, len(dates)):
+            previous = daily[dates[index - 1]]
+            current = daily[dates[index]]
+            if previous <= 0:
+                growth[dates[index]] = 0
             else:
-                rate = 0
-            growth[keys[i]] = rate
+                growth[dates[index]] = round((current - previous) / previous * 100, 2)
         return growth
+
+    def get_top_publish_days(self, top_n: int = 10) -> List[Dict[str, Any]]:
+        daily = self.get_publish_trend("day")
+        ranked = sorted(daily.items(), key=lambda item: item[1], reverse=True)
+        return [{"date": date, "count": count} for date, count in ranked[:top_n]]
 
     def generate_trend_report(self) -> Dict[str, Any]:
         return {
@@ -193,8 +125,18 @@ class TrendAnalyzer:
             "publish_trend_weekly": self.get_publish_trend("week"),
             "publish_trend_monthly": self.get_publish_trend("month"),
             "likes_trend": self.get_interaction_trend("liked_count"),
-            "comment_time_trend": self.get_comment_time_trend("day"),
+            "interaction_trend": self.get_interaction_trend("interaction_count"),
+            "comment_time_trend": self.get_comment_time_trend(),
             "viral_notes": self.detect_viral_notes(),
-            "recent_hot_topics": self.get_hot_topics_by_period(top_n=10, days=30),
-            "growth_rate": self.get_growth_rate("day"),
+            "recent_hot_topics": self.get_hot_topics_by_period(),
+            "growth_rate": self.get_growth_rate(),
+            "top_publish_days": self.get_top_publish_days(),
         }
+
+    def _week_number(self, date_text: str) -> int:
+        from datetime import datetime
+
+        iso_value = datetime.strptime(date_text, "%Y-%m-%d").isocalendar()
+        if hasattr(iso_value, "week"):
+            return int(iso_value.week)
+        return int(iso_value[1])

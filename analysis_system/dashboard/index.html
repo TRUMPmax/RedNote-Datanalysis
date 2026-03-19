@@ -1,1700 +1,937 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>小红书数据分析平台</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<title>小红书数据采集与分析平台</title>
 <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/echarts/map/js/china.js"></script>
 <style>
   :root {
-    --xhs-red: #FF2442;
-    --xhs-pink: #FF6B81;
-    --bg: #f5f7fa;
-    --card: #ffffff;
-    --card2: #f0f2f5;
-    --border: #e1e4e8;
-    --text: #1f2328;
-    --muted: #656d76;
-    --accent: #0969da;
-    --green: #1a7f37;
-    --yellow: #9a6700;
-    --blue: #0550ae;
-    --orange: #bc4c00;
+    --bg: #f3efe6;
+    --paper: #fffdf8;
+    --line: rgba(29, 38, 46, 0.10);
+    --ink: #182126;
+    --muted: #6d777e;
+    --accent: #bc4b2f;
+    --accent-soft: #f7dfd7;
+    --teal: #1f756a;
+    --gold: #9a6b10;
+    --blue: #295c89;
+    --shadow: 0 18px 44px rgba(24, 33, 38, 0.08);
+    --radius: 22px;
   }
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { background: var(--bg); color: var(--text); font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif; min-height: 100vh; }
 
-  /* 顶栏 */
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background:
+      radial-gradient(circle at top left, rgba(188, 75, 47, 0.10), transparent 25%),
+      radial-gradient(circle at top right, rgba(41, 92, 137, 0.12), transparent 24%),
+      linear-gradient(180deg, #f8f3ea 0%, #f3efe6 55%, #f6f1e7 100%);
+    color: var(--ink);
+    font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", sans-serif;
+  }
+
+  h1, h2, h3 {
+    margin: 0;
+    font-family: "Georgia", "Times New Roman", "Songti SC", serif;
+    letter-spacing: 0.02em;
+  }
+
+  button, input, select { font: inherit; }
+  code {
+    background: rgba(24, 33, 38, 0.06);
+    padding: 2px 6px;
+    border-radius: 8px;
+  }
+
   .topbar {
-    background: var(--card);
-    border-bottom: 1px solid var(--border);
-    padding: 0 24px;
-    height: 56px;
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    backdrop-filter: blur(12px);
+    background: rgba(248, 243, 234, 0.86);
+    border-bottom: 1px solid rgba(24, 33, 38, 0.08);
+  }
+
+  .topbar-inner, .shell {
+    width: min(1400px, calc(100vw - 28px));
+    margin: 0 auto;
+  }
+
+  .topbar-inner {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    position: sticky; top: 0; z-index: 100;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    gap: 16px;
+    min-height: 74px;
   }
-  .logo { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 15px; }
-  .logo-icon {
-    width: 28px; height: 28px; border-radius: 6px;
-    background: linear-gradient(135deg, var(--xhs-red), var(--xhs-pink));
-    display: flex; align-items: center; justify-content: center;
-    font-size: 14px; color: white;
-  }
-  .topbar-right { display: flex; align-items: center; gap: 12px; }
-  
-  .filter-group { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-  .filter-label { font-size: 12px; color: var(--muted); }
-  .filter-select, .filter-input {
-    background: var(--card2);
-    border: 1px solid var(--border);
-    color: var(--text);
-    padding: 6px 10px;
-    border-radius: 6px;
-    font-size: 13px;
-    outline: none;
-  }
-  .filter-select:focus, .filter-input:focus { border-color: var(--accent); }
-  .filter-input { width: 120px; }
 
-  .btn {
-    background: var(--accent);
-    border: none;
-    color: white;
-    padding: 6px 14px;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 13px;
-    font-weight: 500;
-    transition: background .2s;
-  }
-  .btn:hover { background: #0550ae; }
-  .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
-  .btn-outline:hover { background: var(--card2); }
-
-  /* 导航 */
-  .nav-tabs {
-    background: var(--card);
-    border-bottom: 1px solid var(--border);
-    padding: 0 24px;
+  .brand {
     display: flex;
-    gap: 4px;
+    align-items: center;
+    gap: 14px;
   }
-  .nav-tab {
-    padding: 14px 18px;
-    cursor: pointer;
-    font-size: 13px;
+
+  .brand-mark {
+    width: 42px;
+    height: 42px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, var(--accent), #de7c4e);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    box-shadow: 0 10px 22px rgba(188, 75, 47, 0.22);
+  }
+
+  .brand-title {
+    font-size: 18px;
+    font-weight: 700;
+  }
+
+  .brand-sub {
     color: var(--muted);
-    border-bottom: 2px solid transparent;
-    transition: all .2s;
+    font-size: 12px;
+    margin-top: 3px;
   }
-  .nav-tab:hover { color: var(--text); }
-  .nav-tab.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 500; }
 
-  /* 内容 */
-  .content { padding: 20px 24px 28px; max-width: 1360px; margin: 0 auto; }
-  .tab-pane { display: none; }
-  .tab-pane.active { display: block; }
+  .nav {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
 
-  /* 统计卡片 */
-  .kpi-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-    gap: 16px;
-    margin-bottom: 20px;
+  .nav-btn, .ghost-btn, .solid-btn, .index-chip {
+    border: none;
+    cursor: pointer;
+    transition: transform .2s ease, background .2s ease, color .2s ease;
   }
-  .kpi-card {
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 16px;
-  }
-  .kpi-label { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
-  .kpi-value { font-size: 24px; font-weight: 600; color: var(--text); }
-  .kpi-sub { font-size: 11px; color: var(--muted); margin-top: 4px; }
 
-  /* 图表卡片 */
-  .chart-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 16px;
-    margin-bottom: 20px;
+  .nav-btn {
+    padding: 10px 14px;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--muted);
   }
-  .chart-card {
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 16px;
+
+  .nav-btn.active {
+    background: rgba(24, 33, 38, 0.08);
+    color: var(--ink);
+    font-weight: 600;
   }
-  .chart-card.wide { grid-column: 1 / -1; }
-  .chart-title { font-size: 14px; font-weight: 500; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
-  .chart-title .tag { font-size: 11px; background: var(--card2); padding: 2px 8px; border-radius: 4px; color: var(--muted); }
-  .chart-container { position: relative; width: 100%; min-height: 280px; }
-  #card-likes-trend.wide { grid-column: 1 / -1; }
-  .chart-card.tight { padding-bottom: 10px; }
-  .table-card { overflow: hidden; }
-  .geo-layout {
+
+  .top-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .solid-btn, .ghost-btn {
+    padding: 11px 16px;
+    border-radius: 999px;
+  }
+
+  .solid-btn {
+    background: var(--accent);
+    color: white;
+    box-shadow: 0 10px 22px rgba(188, 75, 47, 0.20);
+  }
+
+  .ghost-btn {
+    background: rgba(24, 33, 38, 0.08);
+    color: var(--ink);
+  }
+
+  .nav-btn:hover, .solid-btn:hover, .ghost-btn:hover, .index-chip:hover {
+    transform: translateY(-1px);
+  }
+
+  .shell {
+    padding: 22px 0 34px;
+  }
+
+  .hero {
+    border-radius: 32px;
+    padding: 28px;
+    background:
+      linear-gradient(135deg, rgba(255,255,255,0.92), rgba(255,247,234,0.96)),
+      linear-gradient(135deg, rgba(31,117,106,0.06), rgba(188,75,47,0.08));
+    border: 1px solid rgba(255,255,255,0.8);
+    box-shadow: var(--shadow);
+    margin-bottom: 18px;
+  }
+
+  .hero-grid {
     display: grid;
-    grid-template-columns: minmax(0, 1.6fr) minmax(320px, 1fr);
-    gap: 16px;
+    grid-template-columns: 1.3fr 1fr;
+    gap: 22px;
     align-items: start;
   }
-  .geo-map {
-    width: 100%;
-    height: 430px;
-    background: linear-gradient(180deg, #fff 0%, #fff7f8 100%);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-  }
-  .geo-side { display: flex; flex-direction: column; gap: 12px; }
-  .geo-mini-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+
+  .hero-badge {
+    display: inline-flex;
+    align-items: center;
     gap: 8px;
-  }
-  .geo-mini-card {
-    background: var(--card2);
-    border-radius: 8px;
-    padding: 12px;
-  }
-  .geo-mini-label { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
-  .geo-mini-value { font-size: 20px; font-weight: 600; color: var(--text); }
-  .geo-mini-sub { font-size: 11px; color: var(--muted); margin-top: 4px; }
-  .geo-focus {
-    background: var(--card2);
-    border-radius: 8px;
-    padding: 12px;
-    font-size: 13px;
-    color: var(--text);
-    line-height: 1.8;
-  }
-  .geo-table-wrap {
-    max-height: 320px;
-    overflow: auto;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-  }
-  .geo-table-wrap table { margin: 0; }
-  .geo-active-row td { background: #fff1f2 !important; }
-  .geo-empty {
-    background: var(--card2);
-    border-radius: 8px;
-    padding: 16px;
+    padding: 7px 12px;
+    background: rgba(24, 33, 38, 0.06);
     color: var(--muted);
-    font-size: 13px;
+    border-radius: 999px;
+    font-size: 12px;
+    margin-bottom: 14px;
   }
-  .info-card {
-    background: linear-gradient(180deg, #fff8f9 0%, #fff 100%);
-    border: 1px dashed #f3b7c1;
-    border-radius: 10px;
-    padding: 14px 16px;
-    color: var(--text);
-    font-size: 13px;
-    line-height: 1.8;
-  }
-  .info-card strong { color: var(--xhs-red); }
-  .muted-note { color: var(--muted); font-size: 12px; }
 
-  /* 表格 */
-  .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  .data-table th {
-    background: var(--card2);
+  .hero-title {
+    font-size: clamp(28px, 4vw, 46px);
+    line-height: 1.08;
+    margin-bottom: 12px;
+  }
+
+  .hero-copy {
     color: var(--muted);
-    padding: 10px 12px;
-    text-align: left;
-    font-weight: 500;
-    border-bottom: 1px solid var(--border);
+    line-height: 1.8;
+    font-size: 15px;
+    max-width: 760px;
+  }
+
+  .hero-meta, .mini-grid, .legend-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .hero-meta {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+  }
+
+  .metric-card, .mini-card, .panel {
+    background: rgba(255,255,255,0.82);
+    border: 1px solid rgba(255,255,255,0.78);
+    box-shadow: var(--shadow);
+  }
+
+  .metric-card {
+    padding: 18px;
+    border-radius: 20px;
+  }
+
+  .metric-card small, .mini-card small {
+    color: var(--muted);
+    display: block;
+    margin-bottom: 8px;
+  }
+
+  .metric-card strong, .mini-card strong {
+    display: block;
+    font-size: 24px;
+    margin-bottom: 4px;
+  }
+
+  .metric-card span, .mini-card span {
+    color: var(--muted);
+    font-size: 12px;
+  }
+
+  .index-bar {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 18px;
+  }
+
+  #pages-root {
+    position: relative;
+  }
+
+  .index-chip {
+    padding: 9px 14px;
+    border-radius: 999px;
+    background: rgba(24, 33, 38, 0.06);
+    color: var(--muted);
+  }
+
+  .page {
+    position: absolute;
+    inset: 0;
+    visibility: hidden;
+    opacity: 0;
+    pointer-events: none;
+    overflow: hidden;
+    height: 0;
+  }
+
+  .page.active {
+    position: relative;
+    visibility: visible;
+    opacity: 1;
+    pointer-events: auto;
+    overflow: visible;
+    height: auto;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: 18px;
+  }
+
+  .panel {
+    grid-column: span 12;
+    border-radius: var(--radius);
+    padding: 22px;
+    backdrop-filter: blur(10px);
+  }
+
+  .span-4 { grid-column: span 4; }
+  .span-5 { grid-column: span 5; }
+  .span-6 { grid-column: span 6; }
+  .span-7 { grid-column: span 7; }
+  .span-8 { grid-column: span 8; }
+
+  .panel-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    align-items: flex-start;
+    margin-bottom: 14px;
+  }
+
+  .panel-title {
+    font-size: 24px;
+    margin-bottom: 4px;
+  }
+
+  .panel-desc {
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.75;
+  }
+
+  .panel-tag {
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-size: 12px;
     white-space: nowrap;
+    background: var(--accent-soft);
+    color: var(--accent);
   }
-  .data-table td {
-    padding: 10px 12px;
-    border-bottom: 1px solid var(--border);
+
+  .mini-card {
+    padding: 16px;
+    border-radius: 18px;
+    border: 1px solid var(--line);
+    background: var(--paper);
   }
-  .data-table tr:hover td { background: #fafbfc; }
-  
-  .rank-num {
-    display: inline-flex; align-items: center; justify-content: center;
-    width: 22px; height: 22px;
-    border-radius: 4px;
-    background: var(--card2);
-    font-size: 12px; font-weight: 600;
+
+  .chart {
+    width: 100%;
+    min-height: 340px;
+  }
+
+  .chart.short {
+    min-height: 300px;
+  }
+
+  .table-wrap {
+    overflow: auto;
+    border-radius: 18px;
+    border: 1px solid var(--line);
+    background: rgba(255,255,255,0.88);
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 680px;
+  }
+
+  th, td {
+    padding: 12px 14px;
+    border-bottom: 1px solid rgba(24, 33, 38, 0.08);
+    text-align: left;
+    vertical-align: top;
+    font-size: 13px;
+  }
+
+  th {
+    position: sticky;
+    top: 0;
+    background: #fbf2e3;
     color: var(--muted);
+    z-index: 1;
   }
-  .rank-num.gold { background: #fff8c5; color: #9a6700; }
-  .rank-num.silver { background: #f0f0f0; color: #656d76; }
-  .rank-num.bronze { background: #fff0d6; color: #bc4c00; }
 
-  .link-a { color: var(--accent); text-decoration: none; }
-  .link-a:hover { text-decoration: underline; }
-
-  /* 空状态 */
-  .empty-state {
-    text-align: center;
-    padding: 60px 20px;
-    color: var(--muted);
+  .warn-list {
+    display: grid;
+    gap: 10px;
   }
-  .empty-state .icon { font-size: 32px; margin-bottom: 12px; opacity: 0.5; }
-  .empty-state .tip { font-size: 13px; line-height: 1.6; }
-  .empty-state code { background: var(--card2); padding: 2px 6px; border-radius: 4px; font-family: monospace; }
 
-  /* 加载 */
-  .loading-overlay {
-    position: fixed; inset: 0;
-    background: rgba(255,255,255,0.9);
-    display: flex; align-items: center; justify-content: center;
-    z-index: 9999;
+  .warn-item {
+    padding: 14px;
+    border-radius: 16px;
+    border: 1px solid rgba(188,75,47,0.14);
+    background: #fff4ef;
+    line-height: 1.7;
+    font-size: 13px;
   }
-  .loading-overlay.hidden { display: none; }
+
+  .loading {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(243, 239, 230, 0.78);
+    backdrop-filter: blur(8px);
+  }
+
+  .loading.hidden { display: none; }
+
+  .loading-card {
+    background: white;
+    border-radius: 20px;
+    box-shadow: var(--shadow);
+    padding: 18px 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border: 1px solid rgba(24, 33, 38, 0.08);
+  }
+
   .spinner {
-    width: 32px; height: 32px;
-    border: 3px solid var(--border);
+    width: 18px;
+    height: 18px;
+    border-radius: 999px;
+    border: 2px solid rgba(188,75,47,0.18);
     border-top-color: var(--accent);
-    border-radius: 50%;
-    animation: spin .8s linear infinite;
+    animation: spin .75s linear infinite;
   }
+
   @keyframes spin { to { transform: rotate(360deg); } }
 
-  @media (max-width: 768px) {
-    .chart-grid { grid-template-columns: 1fr; }
-    .kpi-grid { grid-template-columns: repeat(2, 1fr); }
-    .filter-group { flex-wrap: wrap; }
-    .geo-layout { grid-template-columns: 1fr; }
-    .geo-map { height: 380px; }
+  @media (max-width: 1180px) {
+    .hero-grid { grid-template-columns: 1fr; }
+    .span-4, .span-5, .span-6, .span-7, .span-8 { grid-column: span 12; }
+    .mini-grid, .legend-grid, .hero-meta { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+
+  @media (max-width: 860px) {
+    .topbar-inner { padding: 10px 0; flex-direction: column; align-items: stretch; }
+    .nav { justify-content: flex-start; }
+    .top-actions { justify-content: flex-start; }
+    .mini-grid, .legend-grid, .hero-meta { grid-template-columns: 1fr; }
+    .panel { padding: 18px; }
   }
 </style>
 </head>
 <body>
-
-<div class="loading-overlay" id="loading"><div class="spinner"></div></div>
-
-<!-- 顶栏 -->
-<div class="topbar">
-  <div class="logo">
-    <div class="logo-icon">X</div>
-    <span>小红书数据分析</span>
-  </div>
-  <div class="topbar-right">
-    <div class="filter-group">
-      <select class="filter-select" id="keyword-filter" onchange="onFilterChange()">
-        <option value="">全部关键词</option>
-      </select>
-      
-      <select class="filter-select" id="sort-filter" onchange="onFilterChange()">
-        <option value="liked_count">按点赞</option>
-        <option value="collected_count">按收藏</option>
-        <option value="comment_count">按评论</option>
-        <option value="share_count">按分享</option>
-      </select>
-
-      <input type="number" class="filter-input" id="min-likes" placeholder="最低点赞" onchange="onFilterChange()">
-      
-      <button class="btn" onclick="loadAll()">查询</button>
-      <button class="btn btn-outline" onclick="resetFilter()">重置</button>
-    </div>
+<div class="loading" id="loading">
+  <div class="loading-card">
+    <div class="spinner"></div>
+    <span>正在生成分析快照与可视化视图...</span>
   </div>
 </div>
 
-<!-- 导航 -->
-<div class="nav-tabs">
-  <div class="nav-tab active" onclick="switchTab('overview')">数据概览</div>
-  <div class="nav-tab" onclick="switchTab('notes')">笔记列表</div>
-  <div class="nav-tab" onclick="switchTab('text')">文本分析</div>
-  <div class="nav-tab" onclick="switchTab('trend')">趋势分析</div>
-  <div class="nav-tab" onclick="switchTab('crawl')">爬虫配置</div>
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <div class="brand-mark">XHS</div>
+      <div>
+        <div class="brand-title">小红书数据采集与分析平台</div>
+        <div class="brand-sub" id="brand-sub">内容趋势、传播表现与用户反馈的综合洞察平台</div>
+      </div>
+    </div>
+    <nav class="nav" id="main-nav"></nav>
+    <div class="top-actions">
+      <button class="ghost-btn" onclick="loadDashboard()">刷新看板</button>
+      <button class="solid-btn" onclick="rebuildDataset()">同步数据</button>
+    </div>
+  </div>
+</header>
+
+<div class="shell">
+  <section class="hero">
+    <div class="hero-grid">
+      <div>
+        <div class="hero-badge">内容趋势 · 传播表现 · 舆情洞察</div>
+        <h1 class="hero-title">洞察内容趋势，读懂传播表现与用户反馈</h1>
+        <div class="hero-copy">
+          围绕内容质量、互动结构、评论情绪、指标关联和聚类画像，帮助快速发现热门话题、高质量内容、传播机会与潜在风险，
+          让分析结果更清晰，决策依据更直观。
+        </div>
+      </div>
+      <div class="hero-meta" id="hero-metrics"></div>
+    </div>
+  </section>
+
+  <div class="index-bar" id="page-index"></div>
+  <main id="pages-root"></main>
 </div>
-
-<div class="content">
-
-  <!-- 数据概览 -->
-  <div class="tab-pane active" id="tab-overview">
-    <div class="kpi-grid" id="kpi-grid">
-      <div class="kpi-card">
-        <div class="kpi-label">笔记总数</div>
-        <div class="kpi-value" id="kpi-notes">-</div>
-        <div class="kpi-sub" id="kpi-notes-sub">-</div>
-      </div>
-      <div class="kpi-card">
-        <div class="kpi-label">评论总数</div>
-        <div class="kpi-value" id="kpi-comments">-</div>
-        <div class="kpi-sub" id="kpi-comments-sub">-</div>
-      </div>
-      <div class="kpi-card">
-        <div class="kpi-label">总点赞</div>
-        <div class="kpi-value" id="kpi-likes">-</div>
-        <div class="kpi-sub" id="kpi-likes-sub">均值 -</div>
-      </div>
-      <div class="kpi-card">
-        <div class="kpi-label">总收藏</div>
-        <div class="kpi-value" id="kpi-collects">-</div>
-        <div class="kpi-sub" id="kpi-collects-sub">均值 -</div>
-      </div>
-      <div class="kpi-card">
-        <div class="kpi-label">总互动</div>
-        <div class="kpi-value" id="kpi-total">-</div>
-        <div class="kpi-sub">点赞+收藏+评论+分享</div>
-      </div>
-      <div class="kpi-card">
-        <div class="kpi-label">活跃作者</div>
-        <div class="kpi-value" id="kpi-authors">-</div>
-        <div class="kpi-sub" id="kpi-authors-sub">-</div>
-      </div>
-    </div>
-
-    <div class="chart-grid">
-      <div class="chart-card wide">
-        <div class="chart-title">
-          地域热力图
-          <span class="tag">按关键词联动</span>
-          <select class="filter-select" id="geo-metric" onchange="renderGeoSection(latestStatsData)" style="margin-left:auto;min-width:150px">
-            <option value="author_count">按博主人数</option>
-            <option value="note_count">按笔记数量</option>
-            <option value="avg_likes">按平均点赞</option>
-            <option value="total_interactions">按总互动量</option>
-            <option value="avg_interactions">按平均互动</option>
-          </select>
-        </div>
-        <div class="geo-layout">
-          <div id="chart-region-map" class="geo-map"></div>
-          <div class="geo-side">
-            <div class="geo-mini-grid" id="geo-summary-wrap"></div>
-            <div class="geo-focus" id="geo-focus-wrap">点击地图区域后，这里会显示该地区的博主和互动概况。</div>
-            <div>
-              <div class="chart-title" style="margin-bottom:8px">地区榜单</div>
-              <div class="geo-table-wrap" id="geo-region-table-wrap"></div>
-            </div>
-            <div>
-              <div class="chart-title" style="margin-bottom:8px">海外分布</div>
-              <div class="geo-table-wrap" id="geo-overseas-wrap"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="chart-card tight">
-        <div class="chart-title">IP属地分布 <span class="tag">Top 15</span></div>
-        <div class="chart-container"><canvas id="chart-location"></canvas></div>
-      </div>
-      <div class="chart-card tight">
-        <div class="chart-title">发布时间分布 <span class="tag">按小时</span></div>
-        <div class="chart-container"><canvas id="chart-hour"></canvas></div>
-      </div>
-      <div class="chart-card wide tight">
-        <div class="chart-title">热门话题 <span class="tag">Top 20</span></div>
-        <div class="chart-container"><canvas id="chart-tags"></canvas></div>
-      </div>
-    </div>
-
-    <div class="chart-card wide table-card">
-      <div class="chart-title">热门笔记榜单 <span class="tag">Top 10</span></div>
-      <div id="top-notes-wrap"></div>
-    </div>
-
-    <div class="chart-card wide table-card">
-      <div class="chart-title">作者活跃排行 <span class="tag">Top 10</span></div>
-      <div id="author-table-wrap"></div>
-    </div>
-  </div>
-
-  <!-- 笔记列表 -->
-  <div class="tab-pane" id="tab-notes">
-    <div class="chart-card wide" style="margin-bottom:16px">
-      <div class="chart-title">笔记列表 <span class="tag" id="notes-count">0</span></div>
-      <div style="margin-bottom:12px;display:flex;gap:8px;align-items:center">
-        <input type="text" class="filter-input" id="search-input" placeholder="搜索标题/作者" style="width:200px" oninput="filterNotes()">
-        <span style="font-size:12px;color:var(--muted)" id="filter-info"></span>
-      </div>
-      <div id="notes-table-wrap"></div>
-    </div>
-  </div>
-
-  <!-- 文本分析 -->
-  <div class="tab-pane" id="tab-text">
-    <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr)">
-      <div class="kpi-card">
-        <div class="kpi-label">正面笔记</div>
-        <div class="kpi-value" id="sent-pos" style="color:var(--green)">-</div>
-        <div class="kpi-sub" id="sent-pos-r">-</div>
-      </div>
-      <div class="kpi-card">
-        <div class="kpi-label">中性笔记</div>
-        <div class="kpi-value" id="sent-neu">-</div>
-        <div class="kpi-sub" id="sent-neu-r">-</div>
-      </div>
-      <div class="kpi-card">
-        <div class="kpi-label">负面笔记</div>
-        <div class="kpi-value" id="sent-neg" style="color:var(--xhs-red)">-</div>
-        <div class="kpi-sub" id="sent-neg-r">-</div>
-      </div>
-    </div>
-
-    <div class="chart-grid">
-      <div class="chart-card">
-        <div class="chart-title">笔记关键词 Top 30</div>
-        <div class="chart-container"><canvas id="chart-note-kw"></canvas></div>
-      </div>
-      <div class="chart-card" id="card-comment-kw">
-        <div class="chart-title">评论关键词 Top 30</div>
-        <div class="chart-container"><canvas id="chart-comment-kw"></canvas></div>
-      </div>
-      <div class="chart-card" id="card-likes-trend">
-        <div class="chart-title">笔记情感分布</div>
-        <div class="chart-container"><canvas id="chart-sentiment"></canvas></div>
-      </div>
-      <div class="chart-card" id="card-comment-sentiment">
-        <div class="chart-title">评论情感分布</div>
-        <div class="chart-container"><canvas id="chart-comment-sentiment"></canvas></div>
-      </div>
-    </div>
-
-    <div class="info-card" id="comment-text-notice" style="display:none;margin-bottom:16px"></div>
-
-    <div class="chart-card wide">
-      <div class="chart-title">热门话题标签</div>
-      <div id="hashtag-cloud" style="padding:8px 0;display:flex;flex-wrap:wrap;gap:6px"></div>
-    </div>
-  </div>
-
-  <!-- 趋势分析 -->
-  <div class="tab-pane" id="tab-trend">
-    <div class="chart-card wide" style="margin-bottom:16px">
-      <div class="chart-title">每日发布趋势</div>
-      <div class="chart-container"><canvas id="chart-daily"></canvas></div>
-    </div>
-    <div class="chart-grid">
-      <div class="chart-card">
-        <div class="chart-title">每日点赞均值趋势</div>
-        <div class="chart-container"><canvas id="chart-likes-trend"></canvas></div>
-      </div>
-      <div class="chart-card" id="card-comment-trend">
-        <div class="chart-title">评论时间分布</div>
-        <div class="chart-container"><canvas id="chart-comment-trend"></canvas></div>
-      </div>
-    </div>
-    <div class="info-card" id="comment-trend-notice" style="display:none;margin-bottom:16px"></div>
-    <div class="chart-card wide">
-      <div class="chart-title">爆款笔记 <span class="tag">超均值5倍</span></div>
-      <div id="viral-table"></div>
-    </div>
-  </div>
-
-  <!-- 爬虫配置 -->
-  <div class="tab-pane" id="tab-crawl">
-    <div class="chart-grid">
-      <div class="chart-card">
-        <div class="chart-title">公开数据导入 <span class="tag" id="public-data-tag">待导入</span></div>
-
-        <div style="font-size:13px;color:var(--muted);margin-bottom:12px">
-          小红书当前反爬较重，这里优先接入公开数据源做分析和可视化演示。
-        </div>
-
-        <div style="margin-bottom:8px;font-size:13px;color:var(--muted)">公开数据源</div>
-        <select class="filter-select" id="public-dataset-id" style="width:100%;margin-bottom:12px" onchange="renderPublicDatasetMeta()"></select>
-
-        <div style="margin-bottom:8px;font-size:13px;color:var(--muted)">导入后的关键词标签</div>
-        <input type="text" class="filter-input" id="public-keyword-label" placeholder="如：公开样本 / 留学话题样本" style="width:100%;margin-bottom:12px">
-
-        <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);margin-bottom:12px">
-          <input type="checkbox" id="public-replace-existing">
-          导入前清理同一公开数据源的旧版本
-        </label>
-
-        <div id="public-dataset-meta" style="background:var(--card2);padding:12px;border-radius:6px;font-size:12px;color:var(--muted);margin-bottom:12px">
-          正在读取公开数据源列表...
-        </div>
-
-        <div style="display:flex;gap:8px;margin-bottom:12px">
-          <button class="btn" onclick="importPublicDataset()" style="flex:1">导入并刷新面板</button>
-          <button class="btn btn-outline" onclick="loadPublicDatasets(false)" style="flex:1">刷新源列表</button>
-        </div>
-
-        <div id="public-import-result" style="background:var(--card2);padding:12px;border-radius:6px;font-size:12px;color:var(--muted)">
-          导入完成后，这里的数据会自动转成标准 CSV，并直接进入概览、文本分析和趋势图。
-        </div>
-      </div>
-
-      <!-- 爬虫控制面板 -->
-      <div class="chart-card">
-        <div class="chart-title">爬虫控制 <span class="tag" id="crawl-status-tag">空闲</span></div>
-        
-        <div style="margin-bottom:16px">
-          <div style="margin-bottom:8px;font-size:13px;color:var(--muted)">搜索关键词（用逗号分隔多个）</div>
-          <input type="text" class="filter-input" id="crawl-keywords" placeholder="如: 副业推荐,编程学习,兼职赚钱" style="width:100%;margin-bottom:12px">
-          
-          <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
-            <select class="filter-select" id="crawl-type" style="flex:1">
-              <option value="search">关键词搜索</option>
-              <option value="detail">指定URL</option>
-            </select>
-            <select class="filter-select" id="crawl-login-type" style="flex:1">
-              <option value="cookie">手动 Cookie 登录</option>
-              <option value="qrcode">扫码登录</option>
-            </select>
-            <select class="filter-select" id="crawl-max" style="flex:1">
-              <option value="50">采集50条</option>
-              <option value="100">采集100条</option>
-              <option value="200">采集200条</option>
-              <option value="500">采集500条</option>
-            </select>
-            <select class="filter-select" id="crawl-save-option" style="flex:1">
-              <option value="csv">保存为 CSV</option>
-              <option value="sqlite">保存为 SQLite</option>
-              <option value="json">保存为 JSON</option>
-            </select>
-          </div>
-
-          <div style="margin-bottom:8px;font-size:13px;color:var(--muted)">完整 Cookie（推荐直接粘贴浏览器复制出的整串）</div>
-          <textarea class="filter-input" id="crawl-cookies" placeholder="示例: a1=...; web_session=...; webId=...; ..." style="width:100%;min-height:96px;resize:vertical;margin-bottom:12px"></textarea>
-
-          <div style="margin-bottom:8px;font-size:13px;color:var(--muted)">可选：单独覆盖 web_session</div>
-          <input type="text" class="filter-input" id="crawl-web-session" placeholder="如果你只更新了 web_session，可以单独粘贴在这里" style="width:100%;margin-bottom:12px">
-
-          <div id="credential-summary" style="background:var(--card2);padding:12px;border-radius:6px;font-size:12px;color:var(--muted);margin-bottom:12px">
-            当前尚未保存 Cookie，建议先粘贴完整 Cookie 后再启动爬虫。
-          </div>
-          
-          <div style="display:flex;gap:8px">
-            <button class="btn" id="btn-start-crawl" onclick="startCrawl()" style="flex:1;background:var(--green)">启动爬虫</button>
-            <button class="btn btn-outline" id="btn-stop-crawl" onclick="stopCrawl()" style="flex:1" disabled>停止</button>
-          </div>
-        </div>
-        
-        <!-- 实时状态 -->
-        <div id="crawl-status" style="background:var(--card2);padding:12px;border-radius:6px;font-size:12px;display:none">
-          <div style="display:flex;justify-content:space-between;margin-bottom:8px">
-            <span style="color:var(--muted)">运行时间</span>
-            <span id="crawl-runtime">0秒</span>
-          </div>
-          <div style="display:flex;justify-content:space-between;margin-bottom:8px">
-            <span style="color:var(--muted)">已采集笔记</span>
-            <span id="crawl-notes" style="font-weight:600">0</span>
-          </div>
-          <div style="display:flex;justify-content:space-between">
-            <span style="color:var(--muted)">已采集评论</span>
-            <span id="crawl-comments" style="font-weight:600">0</span>
-          </div>
-        </div>
-        
-        <!-- 日志输出 -->
-        <div style="margin-top:12px">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-            <span style="font-size:13px;color:var(--muted)">运行日志</span>
-            <button class="btn btn-outline" onclick="refreshLogs()" style="padding:2px 8px;font-size:11px">刷新</button>
-          </div>
-          <pre id="crawl-logs" style="background:#1e1e1e;color:#d4d4d4;padding:10px;border-radius:6px;font-size:11px;max-height:200px;overflow:auto;white-space:pre-wrap;word-break:break-all">等待启动...</pre>
-        </div>
-      </div>
-      
-      <!-- 登录控制 -->
-      <div class="chart-card">
-        <div class="chart-title">登录控制 <span class="tag" id="login-status-tag">未登录</span></div>
-        
-        <div style="margin-bottom:16px">
-          <div style="font-size:13px;color:var(--muted);margin-bottom:12px">
-            使用扫码登录需要在弹出的浏览器窗口中使用小红书APP扫描二维码
-          </div>
-          
-          <div style="display:flex;gap:8px;margin-bottom:12px">
-            <button class="btn" id="btn-login" onclick="startLogin()" style="flex:1">打开扫码登录</button>
-            <button class="btn btn-outline" id="btn-stop-login" onclick="stopLogin()" style="flex:1">停止</button>
-          </div>
-          
-          <div id="login-tips" style="background:var(--card2);padding:12px;border-radius:6px;font-size:12px;color:var(--muted)">
-            登录后可采集更多数据，建议使用Cookie登录以获得更好的稳定性
-          </div>
-        </div>
-        
-        <!-- 配置信息 -->
-        <div style="margin-top:16px">
-          <div class="chart-title" style="margin-bottom:8px">当前配置</div>
-          <div id="config-items"></div>
-        </div>
-        
-          <div style="margin-top:16px">
-            <div class="chart-title" style="margin-bottom:8px">保存配置</div>
-            <div style="display:flex;gap:8px">
-              <button class="btn btn-outline" onclick="saveConfig()" style="flex:1">保存配置与凭证</button>
-            </div>
-          </div>
-        </div>
-      </div>
-  </div>
-
-</div>
-
 <script>
-// 全局状态
-let currentKeyword = '';
-let allNotes = [];
-let allComments = [];
-let filteredNotes = [];
-let chartInstances = {};
-let crawlFormHydrated = false;
-let publicDatasets = [];
-let latestStatsData = null;
-let geoMapChart = null;
-let selectedGeoRegion = '';
-
-const fmt = n => {
-  if (n === null || n === undefined || n === '-') return '-';
-  n = Number(n);
-  if (n >= 10000) return (n / 10000).toFixed(1) + 'w';
-  if (n >= 1000) return (n / 1000).toFixed(1) + 'k';
-  return n.toLocaleString();
-};
-const fmtPct = n => (n || 0).toFixed(1) + '%';
-const $ = id => document.getElementById(id);
-const showLoading = () => $('loading').classList.remove('hidden');
-const hideLoading = () => $('loading').classList.add('hidden');
-
-function destroyChart(id) {
-  if (chartInstances[id]) { chartInstances[id].destroy(); delete chartInstances[id]; }
-}
-function createChart(id, config) {
-  destroyChart(id);
-  const canvas = $(id);
-  if (!canvas) return null;
-  const chart = new Chart(canvas, config);
-  chartInstances[id] = chart;
-  return chart;
-}
-
-function destroyGeoMap() {
-  if (geoMapChart) {
-    geoMapChart.dispose();
-    geoMapChart = null;
-  }
-}
-
-window.addEventListener('resize', () => {
-  Object.values(chartInstances).forEach(chart => {
-    try { chart.resize(); } catch (e) {}
-  });
-  if (geoMapChart) {
-    try { geoMapChart.resize(); } catch (e) {}
-  }
-});
-
-const COLORS = ['#FF2442','#FF6B81','#0969da','#1a7f37','#9a6700','#bc4c00','#8250df','#0550ae','#cf222e','#57606a','#8b5cf6','#14b8a6'];
-const GEO_METRICS = {
-  author_count: { label: '博主人数', formatter: value => fmt(value) },
-  note_count: { label: '笔记数量', formatter: value => fmt(value) },
-  avg_likes: { label: '平均点赞', formatter: value => fmt(value) },
-  total_interactions: { label: '总互动量', formatter: value => fmt(value) },
-  avg_interactions: { label: '平均互动', formatter: value => fmt(value) },
-};
-
-function collectCrawlForm() {
-  return {
-    keywords: $('crawl-keywords').value.trim(),
-    crawl_type: $('crawl-type').value,
-    login_type: $('crawl-login-type').value,
-    max_count: parseInt($('crawl-max').value, 10),
-    save_data_option: $('crawl-save-option').value,
-    cookies: $('crawl-cookies').value.trim(),
-    web_session: $('crawl-web-session').value.trim(),
-  };
-}
-
-function buildQuery(path, params = {}) {
-  const query = new URLSearchParams();
-  Object.entries(params).forEach(([key, value]) => {
-    if (value === undefined || value === null || value === '') return;
-    query.set(key, String(value));
-  });
-  const queryString = query.toString();
-  return queryString ? `${path}?${queryString}` : path;
-}
-
-function parseMetricValue(value) {
-  if (value === null || value === undefined || value === '') return 0;
-  let text = String(value).trim().replace(/,/g, '');
-  if (!text) return 0;
-  if (text.endsWith('w') || text.endsWith('W')) return (parseFloat(text) || 0) * 10000;
-  if (text.endsWith('k') || text.endsWith('K')) return (parseFloat(text) || 0) * 1000;
-  return parseFloat(text) || 0;
-}
-
-function syncCrawlForm(data) {
-  if (!data || data.error) return;
-  if (!crawlFormHydrated) {
-    $('crawl-keywords').value = data.KEYWORDS || '';
-    $('crawl-type').value = data.CRAWLER_TYPE || 'search';
-    $('crawl-login-type').value = data.LOGIN_TYPE || 'cookie';
-    $('crawl-max').value = String(data.CRAWLER_MAX_NOTES_COUNT || 50);
-    $('crawl-save-option').value = data.SAVE_DATA_OPTION || 'csv';
-    crawlFormHydrated = true;
-  }
-
-  $('credential-summary').innerHTML = data.HAS_COOKIES
-    ? `已保存 ${data.cookie_count || 0} 项 Cookie，web_session：${data.web_session_masked || '-'}`
-    : '当前未保存有效 Cookie，公开数据模式下也可以直接做分析。';
-}
-
-async function refreshKeywordOptions(preferredKeyword = '') {
-  try {
-    const r = await fetch('/api/keywords');
-    const d = await r.json();
-    const sel = $('keyword-filter');
-    const currentValue = preferredKeyword || currentKeyword || sel.value;
-    sel.innerHTML = '<option value="">全部关键词</option>';
-    (d.keywords || []).forEach(kw => {
-      const opt = document.createElement('option');
-      opt.value = kw;
-      opt.textContent = kw;
-      sel.appendChild(opt);
-    });
-    if ([...sel.options].some(opt => opt.value === currentValue)) {
-      sel.value = currentValue;
-      currentKeyword = currentValue;
-    } else {
-      currentKeyword = '';
-      sel.value = '';
-    }
-  } catch (e) {}
-}
-
-function renderPublicDatasetMeta() {
-  const select = $('public-dataset-id');
-  const meta = publicDatasets.find(item => item.id === select.value);
-  if (!meta) {
-    $('public-dataset-meta').innerHTML = '暂无可用的公开数据源。';
-    return;
-  }
-
-  $('public-data-tag').textContent = meta.recommended ? '推荐' : '公开';
-  if (!$('public-keyword-label').value.trim()) {
-    $('public-keyword-label').value = meta.default_keyword || '';
-  }
-  $('public-dataset-meta').innerHTML = `
-    <div style="margin-bottom:6px"><strong>${meta.name}</strong></div>
-    <div style="margin-bottom:6px">${meta.description || ''}</div>
-    <div>授权：${meta.license || '-'}</div>
-    <div>本地文件：${meta.local_available ? '已检测到' : '未检测到'}</div>
-    <div>适配当前面板：${meta.import_supported ? '支持' : '不支持'}</div>
-    <div style="margin-top:6px"><a href="${meta.source_url}" target="_blank" class="link-a">查看来源</a></div>
-  `;
-}
-
-async function loadPublicDatasets(keepSelection = true) {
-  try {
-    const res = await fetch('/api/public_datasets');
-    const data = await res.json();
-    publicDatasets = data.datasets || [];
-    const select = $('public-dataset-id');
-    const previous = keepSelection ? select.value : '';
-    select.innerHTML = '';
-
-    publicDatasets.forEach(item => {
-      const opt = document.createElement('option');
-      opt.value = item.id;
-      opt.textContent = item.name + (item.recommended ? '（推荐）' : '');
-      select.appendChild(opt);
-    });
-
-    const previousMatch = publicDatasets.find(item => item.id === previous);
-    const recommendedMatch = publicDatasets.find(item => item.recommended);
-    const nextValue =
-      (previousMatch ? previousMatch.id : '') ||
-      (recommendedMatch ? recommendedMatch.id : '') ||
-      (publicDatasets.length ? publicDatasets[0].id : '') ||
-      '';
-
-    if (nextValue) {
-      select.value = nextValue;
-    }
-    renderPublicDatasetMeta();
-  } catch (e) {
-    $('public-dataset-meta').innerHTML = '公开数据源列表读取失败。';
-  }
-}
-
-async function importPublicDataset() {
-  const datasetId = $('public-dataset-id').value;
-  const keywordLabel = $('public-keyword-label').value.trim();
-  const replaceExisting = $('public-replace-existing').checked;
-
-  if (!datasetId) {
-    alert('请先选择公开数据源');
-    return;
-  }
-
-  $('public-import-result').innerHTML = '正在导入公开数据，请稍候...';
-
-  try {
-    const res = await fetch('/api/public_datasets/import', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({
-        dataset_id: datasetId,
-        keyword_label: keywordLabel,
-        replace_existing: replaceExisting,
-      })
-    });
-    const data = await res.json();
-
-    if (!data.success) {
-      $('public-import-result').innerHTML = `<span style="color:var(--xhs-red)">${data.message || '导入失败'}</span>`;
-      return;
-    }
-
-    const result = data.result || {};
-    $('public-import-result').innerHTML = `
-      <div style="color:var(--green);margin-bottom:6px">导入成功</div>
-      <div>数据源：${result.dataset_name || '-'}</div>
-      <div>关键词标签：${result.keyword_label || '-'}</div>
-      <div>笔记数：${result.notes_count || 0}</div>
-      <div>输出文件：${result.output_path || '-'}</div>
-    `;
-
-    await refreshKeywordOptions(result.keyword_label || '');
-    currentKeyword = result.keyword_label || '';
-    $('keyword-filter').value = currentKeyword;
-    await loadAll();
-  } catch (e) {
-    $('public-import-result').innerHTML = `<span style="color:var(--xhs-red)">导入失败：${e}</span>`;
-  }
-}
-
-async function init() {
-  showLoading();
-  await loadPublicDatasets();
-  await refreshKeywordOptions();
-  await loadAll();
-  hideLoading();
-}
-
-async function loadAll() {
-  showLoading();
-  const keywordParam = currentKeyword || '';
-
-  const [statsR, textR, trendR, configR, notesR] = await Promise.allSettled([
-    fetch(buildQuery('/api/stats', { keyword: keywordParam })).then(r => r.json()),
-    fetch(buildQuery('/api/text', { keyword: keywordParam })).then(r => r.json()),
-    fetch(buildQuery('/api/trend', { keyword: keywordParam })).then(r => r.json()),
-    fetch('/api/crawl_config').then(r => r.json()),
-    fetch(buildQuery('/api/notes', { keyword: keywordParam })).then(r => r.json()),
-  ]);
-
-  const statsData = statsR.status === 'fulfilled' ? statsR.value : null;
-  const textData = textR.status === 'fulfilled' ? textR.value : null;
-  const trendData = trendR.status === 'fulfilled' ? trendR.value : null;
-  const configData = configR.status === 'fulfilled' ? configR.value : null;
-  const notesData = notesR.status === 'fulfilled' ? notesR.value : null;
-
-  allNotes = notesData && Array.isArray(notesData.data) ? notesData.data : [];
-  allComments = [];
-
-  renderOverview(statsData);
-  renderNotes(allNotes);
-  renderText(textData);
-  renderTrend(trendData);
-  renderConfig(configData);
-  hideLoading();
-}
-
-function onFilterChange() {
-  const nextKeyword = $('keyword-filter').value;
-  const keywordChanged = nextKeyword !== currentKeyword;
-  currentKeyword = nextKeyword;
-  if (keywordChanged) {
-    loadAll();
-    return;
-  }
-  filterNotes();
-}
-
-function resetFilter() {
-  $('keyword-filter').value = '';
-  $('sort-filter').value = 'liked_count';
-  $('min-likes').value = '';
-  $('search-input').value = '';
-  currentKeyword = '';
-  loadAll();
-}
-
-function switchTab(name) {
-  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-  $(`tab-${name}`).classList.add('active');
-  const tab = typeof event !== 'undefined' ? event.target : null;
-  if (tab && tab.classList) {
-    tab.classList.add('active');
-  }
-}
-
-function emptyState(msg = '暂无数据') {
-  return `<div class="empty-state"><div class="tip">${msg}</div></div>`;
-}
-function renderGeoEmpty(message = '暂无地区数据') {
-  destroyGeoMap();
-  $('chart-region-map').innerHTML = `<div class="geo-empty" style="height:100%;display:flex;align-items:center;justify-content:center">${message}</div>`;
-  $('geo-summary-wrap').innerHTML = '';
-  $('geo-focus-wrap').innerHTML = message;
-  $('geo-region-table-wrap').innerHTML = `<div class="geo-empty">${message}</div>`;
-  $('geo-overseas-wrap').innerHTML = `<div class="geo-empty">暂无海外地区数据</div>`;
-}
-
-function renderGeoSection(data) {
-  if (!data || data.error || !data.geo_report) {
-    renderGeoEmpty('当前还没有可用于地域分析的数据。');
-    return;
-  }
-
-  const geo = data.geo_report || {};
-  const chinaRegions = geo.china_region_stats || [];
-  const overseasRegions = geo.overseas_distribution || [];
-  if (!chinaRegions.length) {
-    renderGeoEmpty('当前关键词下没有中国地区数据，暂时无法生成热力图。');
-    return;
-  }
-
-  const metric = $('geo-metric').value || 'author_count';
-  const metricMeta = GEO_METRICS[metric] || GEO_METRICS.author_count;
-  const rankedRegions = [...chinaRegions].sort((a, b) => (b[metric] || 0) - (a[metric] || 0));
-  const currentTopRegion = rankedRegions[0] || null;
-  const currentTopRegionName = currentTopRegion ? currentTopRegion.name : '-';
-  const currentTopRegionMetric = currentTopRegion ? (currentTopRegion[metric] || 0) : 0;
-  if (!selectedGeoRegion || !chinaRegions.some(item => item.name === selectedGeoRegion)) {
-    selectedGeoRegion = currentTopRegion ? currentTopRegion.name : '';
-  }
-  const focusRegion = chinaRegions.find(item => item.name === selectedGeoRegion) || rankedRegions[0];
-  const summary = geo.summary || {};
-
-  $('geo-summary-wrap').innerHTML = `
-    <div class="geo-mini-card">
-      <div class="geo-mini-label">覆盖省级地区</div>
-      <div class="geo-mini-value">${fmt(summary.domestic_region_count || 0)}</div>
-      <div class="geo-mini-sub">当前关键词下可映射到中国地图的地区数</div>
-    </div>
-    <div class="geo-mini-card">
-      <div class="geo-mini-label">国内博主数</div>
-      <div class="geo-mini-value">${fmt(summary.domestic_author_count || 0)}</div>
-      <div class="geo-mini-sub">按作者去重后的地区覆盖</div>
-    </div>
-    <div class="geo-mini-card">
-      <div class="geo-mini-label">海外地区数</div>
-      <div class="geo-mini-value">${fmt(summary.overseas_region_count || 0)}</div>
-      <div class="geo-mini-sub">海外/境外属地单独统计</div>
-    </div>
-    <div class="geo-mini-card">
-      <div class="geo-mini-label">当前最强地区</div>
-      <div class="geo-mini-value">${currentTopRegionName}</div>
-      <div class="geo-mini-sub">${metricMeta.label} ${metricMeta.formatter(currentTopRegionMetric)}</div>
-    </div>
-  `;
-
-  $('geo-focus-wrap').innerHTML = `
-    <div style="font-weight:600;font-size:15px;margin-bottom:6px">${focusRegion.name}</div>
-    <div>博主人数：<strong>${fmt(focusRegion.author_count)}</strong></div>
-    <div>笔记数量：<strong>${fmt(focusRegion.note_count)}</strong></div>
-    <div>平均点赞：<strong>${fmt(focusRegion.avg_likes)}</strong></div>
-    <div>总互动量：<strong>${fmt(focusRegion.total_interactions)}</strong></div>
-    <div>平均互动：<strong>${fmt(focusRegion.avg_interactions)}</strong></div>
-    <div>人均发文：<strong>${focusRegion.avg_notes_per_author}</strong></div>
-    <div style="color:var(--muted)">原始属地样本：${(focusRegion.raw_locations || []).join(' / ') || '-'}</div>
-  `;
-
-  $('geo-region-table-wrap').innerHTML = `
-    <table class="data-table">
-      <thead><tr><th>地区</th><th>${metricMeta.label}</th><th>博主数</th><th>笔记数</th><th>均点赞</th></tr></thead>
-      <tbody>
-        ${rankedRegions.slice(0, 12).map(region => `
-          <tr class="${region.name === focusRegion.name ? 'geo-active-row' : ''}" onclick="selectGeoRegion('${region.name}')">
-            <td>${region.name}</td>
-            <td>${metricMeta.formatter(region[metric] || 0)}</td>
-            <td>${fmt(region.author_count)}</td>
-            <td>${fmt(region.note_count)}</td>
-            <td>${fmt(region.avg_likes)}</td>
-          </tr>
-        `).join('')}
-      </tbody>
-    </table>
-  `;
-
-  if (overseasRegions.length) {
-    $('geo-overseas-wrap').innerHTML = `
-      <table class="data-table">
-        <thead><tr><th>地区</th><th>博主数</th><th>笔记数</th><th>总互动</th></tr></thead>
-        <tbody>
-          ${overseasRegions.slice(0, 8).map(region => `
-            <tr>
-              <td>${region.name}</td>
-              <td>${fmt(region.author_count)}</td>
-              <td>${fmt(region.note_count)}</td>
-              <td>${fmt(region.total_interactions)}</td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
-    `;
-  } else {
-    $('geo-overseas-wrap').innerHTML = '<div class="geo-empty">当前关键词下暂无海外地区数据</div>';
-  }
-
-  renderGeoMap(chinaRegions, metric, focusRegion.name);
-}
-
-function renderGeoMap(regions, metric, focusRegionName) {
-  const mapDom = $('chart-region-map');
-  if (!mapDom) return;
-  if (!window.echarts) {
-    mapDom.innerHTML = '<div class="geo-empty">地图组件加载失败，请刷新页面重试。</div>';
-    return;
-  }
-
-  destroyGeoMap();
-  mapDom.innerHTML = '';
-  geoMapChart = window.echarts.init(mapDom);
-  const metricMeta = GEO_METRICS[metric] || GEO_METRICS.author_count;
-  const seriesData = regions.map(region => ({
-    name: region.name,
-    value: Number(region[metric] || 0),
-    region,
-    selected: region.name === focusRegionName,
-  }));
-  const values = seriesData.map(item => item.value || 0);
-  const maxValue = Math.max(...values, 1);
-
-  geoMapChart.setOption({
-    backgroundColor: 'transparent',
-    tooltip: {
-      trigger: 'item',
-      formatter: params => {
-        const region = params.data ? params.data.region : null;
-        if (!region) return `${params.name}<br/>暂无数据`;
-        return [
-          `<strong>${region.name}</strong>`,
-          `${metricMeta.label}：${metricMeta.formatter(region[metric] || 0)}`,
-          `博主人数：${fmt(region.author_count)}`,
-          `笔记数量：${fmt(region.note_count)}`,
-          `平均点赞：${fmt(region.avg_likes)}`,
-          `总互动量：${fmt(region.total_interactions)}`,
-        ].join('<br/>');
-      }
-    },
-    visualMap: {
-      min: 0,
-      max: maxValue,
-      left: 12,
-      bottom: 12,
-      calculable: true,
-      text: ['高', '低'],
-      itemHeight: 100,
-      inRange: {
-        color: ['#fff7f8', '#ffb0ba', '#ff6b81', '#ff2442']
-      },
-      textStyle: { color: '#656d76' }
-    },
-    series: [{
-      name: metricMeta.label,
-      type: 'map',
-      map: 'china',
-      roam: false,
-      selectedMode: 'single',
-      label: {
-        show: false,
-        color: '#1f2328',
-      },
-      emphasis: {
-        label: { show: true, color: '#1f2328', fontWeight: 600 },
-        itemStyle: { areaColor: '#ff8ea0' }
-      },
-      select: {
-        label: { show: true, color: '#1f2328', fontWeight: 600 },
-        itemStyle: { areaColor: '#ff8ea0', borderColor: '#cf222e', borderWidth: 1.2 }
-      },
-      itemStyle: {
-        borderColor: '#ffffff',
-        borderWidth: 1,
-      },
-      data: seriesData,
-    }]
-  });
-
-  geoMapChart.off('click');
-  geoMapChart.on('click', params => {
-    if (!params.name) return;
-    selectedGeoRegion = params.name;
-    renderGeoSection(latestStatsData);
-  });
-}
-
-function selectGeoRegion(regionName) {
-  selectedGeoRegion = regionName;
-  renderGeoSection(latestStatsData);
-}
-
-// ============ 渲染函数 ============
-
-function renderOverview(data) {
-  latestStatsData = data;
-  if (!data || data.error || !data.overview) {
-    $('kpi-notes').textContent = '0';
-    $('kpi-notes-sub').textContent = '暂无数据';
-    $('kpi-comments').textContent = '0';
-    $('kpi-comments-sub').textContent = '-';
-    $('kpi-likes').textContent = '0';
-    $('kpi-likes-sub').textContent = '均值 0';
-    $('kpi-collects').textContent = '0';
-    $('kpi-collects-sub').textContent = '均值 0';
-    $('kpi-total').textContent = '0';
-    $('kpi-authors').textContent = '0';
-    $('kpi-authors-sub').textContent = '等待导入';
-    $('author-table-wrap').innerHTML = emptyState('当前还没有可分析的数据，先到“公开数据导入”里导入一份样本。');
-    if ($('top-notes-wrap')) $('top-notes-wrap').innerHTML = emptyState('当前关键词下暂无热门笔记。');
-    destroyChart('chart-location');
-    destroyChart('chart-hour');
-    destroyChart('chart-tags');
-    renderGeoEmpty('当前没有可用于地域分析的数据。');
-    return;
-  }
-
-  const ov = data.overview;
-  const interaction = data.interaction_stats || {};
-  const liked = interaction.liked || {};
-  const collected = interaction.collected || {};
-
-  $('kpi-notes').textContent = fmt(ov.note_count);
-  $('kpi-notes-sub').textContent = currentKeyword ? `关键词：${currentKeyword}` : '全部数据';
-  $('kpi-comments').textContent = fmt(ov.comment_count);
-  $('kpi-comments-sub').textContent = ov.has_comment_details
-    ? `评论明细 ${fmt(ov.comment_record_count || 0)} 条`
-    : '按笔记 comment_count 汇总';
-  $('kpi-likes').textContent = fmt(liked.total || 0);
-  $('kpi-likes-sub').textContent = `均值 ${fmt(liked.avg || 0)}`;
-  $('kpi-collects').textContent = fmt(collected.total || 0);
-  $('kpi-collects-sub').textContent = `均值 ${fmt(collected.avg || 0)}`;
-  $('kpi-total').textContent = fmt(interaction.total_interactions || 0);
-  $('kpi-authors').textContent = fmt(ov.author_count || 0);
-  $('kpi-authors-sub').textContent = '按作者去重';
-
-  renderGeoSection(data);
-
-  const locData = data.location_distribution || [];
-  createChart('chart-location', {
-    type: 'bar',
-    data: {
-      labels: locData.map(([name]) => name || '未知'),
-      datasets: [{ label: '笔记数', data: locData.map(([, value]) => value), backgroundColor: COLORS[0] + '99', borderRadius: 4 }]
-    },
-    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } }, y: { grid: { color: '#e1e4e8' } } } }
-  });
-
-  const hourData = data.time_distribution || {};
-  const hours = Array.from({ length: 24 }, (_, i) => i);
-  createChart('chart-hour', {
-    type: 'bar',
-    data: {
-      labels: hours.map(h => `${h}:00`),
-      datasets: [{ label: '笔记数', data: hours.map(h => hourData[h] || 0), backgroundColor: '#0969da99', borderRadius: 3 }]
-    },
-    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } }, y: { grid: { color: '#e1e4e8' } } } }
-  });
-
-  const tagData = (data.tag_distribution || []).slice(0, 20);
-  createChart('chart-tags', {
-    type: 'bar',
-    data: {
-      labels: tagData.map(([tag]) => '#' + tag),
-      datasets: [{ label: '次数', data: tagData.map(([, value]) => value), backgroundColor: '#8250df99', borderRadius: 3 }]
-    },
-    options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { color: '#e1e4e8' } }, y: { grid: { display: false } } } }
-  });
-
-  const authors = data.author_leaderboard || [];
-  $('author-table-wrap').innerHTML = authors.length ? `
-    <table class="data-table">
-      <thead><tr><th style="width:50px">排名</th><th>作者</th><th>笔记数</th><th>总点赞</th><th>平均点赞</th></tr></thead>
-      <tbody>
-        ${authors.map((a, i) => {
-          const rc = i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : '';
-          return `<tr><td><span class="rank-num ${rc}">${i + 1}</span></td><td>${a.nickname || a.user_id || '-'}</td><td>${fmt(a.note_count)}</td><td>${fmt(a.total_likes)}</td><td>${fmt(a.avg_likes)}</td></tr>`;
-        }).join('')}
-      </tbody>
-    </table>` : emptyState('当前关键词下暂无作者数据');
-
-  const topNotes = data.top_notes || [];
-  if ($('top-notes-wrap')) {
-    $('top-notes-wrap').innerHTML = topNotes.length ? `
-      <table class="data-table">
-        <thead><tr><th style="width:50px">排名</th><th>标题</th><th>作者</th><th>点赞</th><th>评论</th></tr></thead>
-        <tbody>
-          ${topNotes.map((n, i) => {
-            const rc = i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : '';
-            return `<tr><td><span class="rank-num ${rc}">${i + 1}</span></td><td title="${n.title || ''}">${n.title || '(无标题)'}</td><td>${n.nickname || '-'}</td><td style="color:var(--xhs-red)">${fmt(n.liked_count)}</td><td>${fmt(n.comment_count)}</td></tr>`;
-          }).join('')}
-        </tbody>
-      </table>` : emptyState('当前关键词下暂无热门笔记。');
-  }
-}
-
-function renderNotes(notes) {
-  if (!Array.isArray(notes) || !notes.length) {
-    $('notes-count').textContent = '0';
-    $('filter-info').textContent = '';
-    $('notes-table-wrap').innerHTML = emptyState('当前关键词下暂无笔记列表数据');
-    return;
-  }
-  filterNotes();
-}
-
-function renderNotesTable(notes) {
-  $('notes-count').textContent = notes.length;
-  $('filter-info').textContent = notes.length !== (allNotes.length || 0) ? `已筛选 ${notes.length} 条` : `共 ${allNotes.length || 0} 条`;
-
-  if (!notes.length) {
-    $('notes-table-wrap').innerHTML = emptyState('当前筛选条件下没有匹配的笔记');
-    return;
-  }
-
-  $('notes-table-wrap').innerHTML = `
-    <div style="max-height:720px;overflow:auto">
-      <table class="data-table">
-        <thead><tr><th style="width:60px">#</th><th>标题</th><th>作者</th><th>点赞</th><th>收藏</th><th>评论</th><th>分享</th><th>属地</th><th>发布时间</th><th>链接</th></tr></thead>
-        <tbody>
-          ${notes.map((n, i) => {
-            const timeText = n.time ? new Date(Number(n.time) * 1000).toISOString().slice(0, 10) : '-';
-            return `<tr>
-              <td>${i + 1}</td>
-              <td title="${n.title || ''}">${n.title ? n.title.substring(0, 48) + (n.title.length > 48 ? '...' : '') : '(无标题)'}</td>
-              <td>${n.nickname || '-'}</td>
-              <td style="color:var(--xhs-red)">${fmt(n.liked_count)}</td>
-              <td>${fmt(n.collected_count)}</td>
-              <td>${fmt(n.comment_count)}</td>
-              <td>${fmt(n.share_count)}</td>
-              <td>${n.ip_location || '-'}</td>
-              <td>${timeText}</td>
-              <td>${n.note_url ? `<a href="${n.note_url}" target="_blank" class="link-a">查看</a>` : '-'}</td>
-            </tr>`;
-          }).join('')}
-        </tbody>
-      </table>
-    </div>`;
-}
-
-function filterNotes() {
-  const kw = $('search-input').value.trim().toLowerCase();
-  const minLikes = parseInt($('min-likes').value, 10) || 0;
-  const sortBy = $('sort-filter').value;
-
-  let notes = Array.isArray(allNotes) ? [...allNotes] : [];
-  if (kw) {
-    notes = notes.filter(n =>
-      (n.title && n.title.toLowerCase().includes(kw)) ||
-      (n.nickname && n.nickname.toLowerCase().includes(kw))
-    );
-  }
-  if (minLikes > 0) {
-    notes = notes.filter(n => parseMetricValue(n.liked_count) >= minLikes);
-  }
-
-  notes.sort((a, b) => parseMetricValue(b[sortBy]) - parseMetricValue(a[sortBy]));
-  filteredNotes = notes;
-  renderNotesTable(notes);
-}
-
-function renderText(data) {
-  if (!data || data.error) {
-    ['sent-pos','sent-neu','sent-neg'].forEach(id => { const el = $(id); if (el) el.textContent = '0'; });
-    $('hashtag-cloud').innerHTML = '<span style="color:var(--muted);font-size:13px">暂无文本分析数据</span>';
-    $('comment-text-notice').style.display = '';
-    $('comment-text-notice').innerHTML = '当前没有可用的文本分析数据。';
-    $('card-comment-kw').style.display = 'none';
-    $('card-comment-sentiment').style.display = 'none';
-    destroyChart('chart-note-kw');
-    destroyChart('chart-comment-kw');
-    destroyChart('chart-sentiment');
-    destroyChart('chart-comment-sentiment');
-    return;
-  }
-
-  const ns = data.note_sentiment || {};
-  const hasCommentDetails = !!(latestStatsData && latestStatsData.overview && latestStatsData.overview.has_comment_details);
-  $('sent-pos').textContent = fmt(ns.positive || 0);
-  $('sent-pos-r').textContent = fmtPct(ns.positive_ratio || 0);
-  $('sent-neu').textContent = fmt(ns.neutral || 0);
-  $('sent-neu-r').textContent = fmtPct(Math.max(0, 100 - (ns.positive_ratio || 0) - (ns.negative_ratio || 0)));
-  $('sent-neg').textContent = fmt(ns.negative || 0);
-  $('sent-neg-r').textContent = fmtPct(ns.negative_ratio || 0);
-
-  const nkws = (data.note_keywords || []).slice(0, 30);
-  createChart('chart-note-kw', {
-    type: 'bar',
-    data: { labels: nkws.map(([w]) => w), datasets: [{ label: '词频', data: nkws.map(([, v]) => v), backgroundColor: COLORS[6] + '99', borderRadius: 3 }] },
-    options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { color: '#e1e4e8' } }, y: { grid: { display: false } } } }
-  });
-
-  createChart('chart-sentiment', {
-    type: 'doughnut',
-    data: { labels: ['正向', '中性', '负向'], datasets: [{ data: [ns.positive || 0, ns.neutral || 0, ns.negative || 0], backgroundColor: ['#1a7f37', '#656d76', '#cf222e'], hoverOffset: 4 }] },
-    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { padding: 12 } } } }
-  });
-
-  if (hasCommentDetails && (data.comment_keywords || []).length) {
-    const ckws = (data.comment_keywords || []).slice(0, 30);
-    $('card-comment-kw').style.display = '';
-    $('card-comment-sentiment').style.display = '';
-    $('comment-text-notice').style.display = 'none';
-    createChart('chart-comment-kw', {
-      type: 'bar',
-      data: { labels: ckws.map(([w]) => w), datasets: [{ label: '词频', data: ckws.map(([, v]) => v), backgroundColor: COLORS[2] + '99', borderRadius: 3 }] },
-      options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { color: '#e1e4e8' } }, y: { grid: { display: false } } } }
-    });
-
-    const cs = data.comment_sentiment || {};
-    createChart('chart-comment-sentiment', {
-      type: 'doughnut',
-      data: { labels: ['正向', '中性', '负向'], datasets: [{ data: [cs.positive || 0, cs.neutral || 0, cs.negative || 0], backgroundColor: ['#1a7f37', '#656d76', '#cf222e'], hoverOffset: 4 }] },
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { padding: 12 } } } }
-    });
-  } else {
-    $('card-comment-kw').style.display = 'none';
-    $('card-comment-sentiment').style.display = 'none';
-    $('comment-text-notice').style.display = '';
-    $('comment-text-notice').innerHTML = '<strong>当前公开数据源没有评论正文。</strong> 评论总数已经按笔记级字段正常汇总，但评论关键词和评论情感图会自动隐藏。';
-    destroyChart('chart-comment-kw');
-    destroyChart('chart-comment-sentiment');
-  }
-
-  const tags = data.hashtags || [];
-  const cloud = $('hashtag-cloud');
-  if (!tags.length) {
-    cloud.innerHTML = '<span style="color:var(--muted);font-size:13px">暂无标签数据</span>';
-    return;
-  }
-  const maxCnt = tags[0][1] || 1;
-  cloud.innerHTML = tags.slice(0, 40).map(([tag, cnt]) => {
-    const size = 12 + Math.round((cnt / maxCnt) * 10);
-    return `<span style="font-size:${size}px;color:var(--accent);cursor:default" title="${cnt}次">#${tag}</span>`;
-  }).join('');
-}
-
-function renderTrend(data) {
-  const likesCard = $('card-likes-trend');
-  if (!data || data.error) {
-    $('viral-table').innerHTML = emptyState('暂无趋势数据');
-    $('card-comment-trend').style.display = 'none';
-    $('comment-trend-notice').style.display = '';
-    $('comment-trend-notice').innerHTML = '当前没有可用的评论趋势数据。';
-    if (likesCard) likesCard.classList.add('wide');
-    return;
-  }
-
-  const hasCommentDetails = !!(latestStatsData && latestStatsData.overview && latestStatsData.overview.has_comment_details);
-  const daily = data.publish_trend_daily || {};
-  const dailyKeys = Object.keys(daily).slice(-60);
-  createChart('chart-daily', {
-    type: 'line',
-    data: { labels: dailyKeys, datasets: [{ label: '发布量', data: dailyKeys.map(k => daily[k] || 0), borderColor: '#0969da', backgroundColor: '#0969da22', fill: true, tension: .3, pointRadius: 2, pointHoverRadius: 5 }] },
-    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } }, y: { grid: { color: '#e1e4e8' } } } }
-  });
-
-  const likesTrend = data.likes_trend || {};
-  const ltKeys = Object.keys(likesTrend).slice(-60);
-  createChart('chart-likes-trend', {
-    type: 'line',
-    data: { labels: ltKeys, datasets: [{ label: '均点赞', data: ltKeys.map(k => likesTrend[k] || 0), borderColor: '#9a6700', backgroundColor: '#9a670022', fill: true, tension: .3, pointRadius: 2 }] },
-    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } }, y: { grid: { color: '#e1e4e8' } } } }
-  });
-
-  const cmtTrend = data.comment_time_trend || {};
-  const ctKeys = Object.keys(cmtTrend).slice(-60);
-  if (hasCommentDetails && ctKeys.length) {
-    if (likesCard) likesCard.classList.remove('wide');
-    $('card-comment-trend').style.display = '';
-    $('comment-trend-notice').style.display = 'none';
-    createChart('chart-comment-trend', {
-      type: 'bar',
-      data: { labels: ctKeys, datasets: [{ label: '评论数', data: ctKeys.map(k => cmtTrend[k] || 0), backgroundColor: '#8250df99', borderRadius: 3 }] },
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } }, y: { grid: { color: '#e1e4e8' } } } }
-    });
-  } else {
-    if (likesCard) likesCard.classList.add('wide');
-    $('card-comment-trend').style.display = 'none';
-    $('comment-trend-notice').style.display = '';
-    $('comment-trend-notice').innerHTML = '<strong>评论时间分布不可用。</strong> 当前公开样本只有每条笔记的评论总量，没有逐条评论时间，所以这里不会再显示空白图表。';
-    destroyChart('chart-comment-trend');
-  }
-
-  const viral = data.viral_notes || [];
-  $('viral-table').innerHTML = viral.length ? `
-    <table class="data-table">
-      <thead><tr><th>标题</th><th>作者</th><th>点赞</th><th>均值</th><th>倍数</th><th>链接</th></tr></thead>
-      <tbody>
-        ${viral.map(n => `<tr><td title="${n.title || ''}">${(n.title || '').substring(0, 40)}</td><td>${n.nickname || '-'}</td><td style="color:var(--xhs-red);font-weight:600">${fmt(n.liked_count)}</td><td>${fmt(n.avg_likes)}</td><td style="color:var(--green)">x${n.ratio}</td><td><a href="${n.note_url}" target="_blank" class="link-a">查看</a></td></tr>`).join('')}
-      </tbody>
-    </table>` : '<div style="color:var(--muted);padding:20px;font-size:13px">暂无爆款笔记</div>';
-}
-function renderConfig(data) {
-  if (!data || data.error) {
-    $('config-items').innerHTML = '<div style="color:var(--muted)">配置读取失败</div>';
-    return;
-  }
-
-  const items = [
-    ['目标平台', data.PLATFORM],
-    ['搜索关键词', data.KEYWORDS],
-    ['登录方式', data.LOGIN_TYPE],
-    ['抓取类型', data.CRAWLER_TYPE],
-    ['存储格式', data.SAVE_DATA_OPTION],
-    ['最大笔记数', data.CRAWLER_MAX_NOTES_COUNT],
-    ['抓取评论', data.ENABLE_GET_COMMENTS === 'True' ? '开启' : '关闭'],
-    ['CDP 模式', data.ENABLE_CDP_MODE === 'True' ? '开启' : '关闭'],
-    ['Cookie 状态', data.HAS_COOKIES ? `已保存 ${data.cookie_count || 0} 项` : '未保存'],
-    ['web_session', data.web_session_masked || '-'],
+  const $ = (id) => document.getElementById(id);
+  const NAV_ITEMS = [
+    { id: 'overview', label: '总览', anchors: ['overview-kpis-panel', 'overview-trend-panel', 'overview-region-panel', 'overview-topnotes-panel'] },
+    { id: 'opinion', label: '舆情监测', anchors: ['opinion-sentiment-panel', 'opinion-risk-panel', 'opinion-comments-panel'] },
+    { id: 'content', label: '内容分析', anchors: ['content-score-panel', 'content-keyword-panel', 'content-topquality-panel'] },
+    { id: 'relationship', label: '关联挖掘', anchors: ['relationship-highlight-panel', 'relationship-heatmap-panel', 'relationship-pair-panel'] },
+    { id: 'clusters', label: '聚类洞察', anchors: ['cluster-scatter-panel', 'cluster-table-panel'] },
+    { id: 'assets', label: '数据资产', anchors: ['asset-summary-panel', 'asset-schema-panel'] }
   ];
 
-  $('config-items').innerHTML = items.map(([k, v]) => `
-    <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)">
-      <span style="color:var(--muted);font-size:13px">${k}</span>
-      <span style="font-size:13px;font-weight:500">${v || '-'}</span>
-    </div>
-  `).join('');
+  const charts = {};
+  const renderedPages = new Set();
+  let dashboard = null;
+  let currentPage = 'overview';
 
-  syncCrawlForm(data);
-
-  if (data.CRAWLER_AVAILABLE === false) {
-    $('crawl-status-tag').textContent = '未接入';
-    $('crawl-status-tag').style.background = 'var(--card2)';
-    $('btn-start-crawl').disabled = true;
-    $('btn-stop-crawl').disabled = true;
-    $('btn-login').disabled = true;
-    $('login-status-tag').textContent = '已停用';
-    $('login-status-tag').style.background = 'var(--card2)';
-    $('credential-summary').innerHTML = '当前工作区未检测到爬虫后端，建议直接使用左侧的公开数据导入功能。';
-    $('login-tips').innerHTML = '<span style="color:var(--muted)">扫码登录功能已停用，当前模式下仅保留公开数据分析。</span>';
-    $('crawl-logs').textContent = '当前未接入 MediaCrawler-main，已切换到公开数据分析模式。';
+  function buildPages() {
+    $('pages-root').innerHTML = `
+      <section class="page active" data-page="overview">
+        <div class="grid">
+          <div class="panel" id="overview-kpis-panel"><div class="panel-head"><div><h2 class="panel-title">传播总览</h2><div class="panel-desc">先看样本规模、平均质量分和总互动量，再进入时间趋势与地域分布。</div></div><div class="panel-tag" id="overview-tag">等待加载</div></div><div class="mini-grid" id="overview-kpis"></div></div>
+          <div class="panel span-8" id="overview-trend-panel"><div class="panel-head"><div><h2 class="panel-title">发布趋势</h2><div class="panel-desc">按日观察笔记发布节奏，作为整个分析平台的时间基线。</div></div></div><div class="chart" id="overview-trend-chart"></div></div>
+          <div class="panel span-4" id="overview-type-panel"><div class="panel-head"><div><h2 class="panel-title">内容类型</h2><div class="panel-desc">图文与视频的占比概览。</div></div></div><div class="chart short" id="overview-type-chart"></div></div>
+          <div class="panel span-6" id="overview-region-panel"><div class="panel-head"><div><h2 class="panel-title">地域互动强度</h2><div class="panel-desc">按属地聚合总互动量，识别内容活跃区域。</div></div></div><div class="chart" id="overview-region-chart"></div></div>
+          <div class="panel span-6" id="overview-author-panel"><div class="panel-head"><div><h2 class="panel-title">头部作者</h2><div class="panel-desc">展示互动总量领先的作者，用于快速识别核心样本来源。</div></div></div><div class="table-wrap" id="overview-author-table"></div></div>
+          <div class="panel" id="overview-topnotes-panel"><div class="panel-head"><div><h2 class="panel-title">高质量笔记样本</h2><div class="panel-desc">综合质量分、互动量和发布时间一起看，避免只看点赞的单一排序。</div></div></div><div class="table-wrap" id="overview-topnotes-table"></div></div>
+        </div>
+      </section>
+      <section class="page" data-page="opinion">
+        <div class="grid">
+          <div class="panel" id="opinion-sentiment-panel"><div class="panel-head"><div><h2 class="panel-title">舆情温度</h2><div class="panel-desc">笔记文本与评论文本分别做情绪识别，辅助判断当前样本的情绪偏向。</div></div></div><div class="legend-grid" id="opinion-metrics"></div></div>
+          <div class="panel span-5" id="opinion-distribution-panel"><div class="panel-head"><div><h2 class="panel-title">情绪分布</h2><div class="panel-desc">笔记情绪与评论情绪的总体占比。</div></div></div><div class="chart" id="opinion-distribution-chart"></div></div>
+          <div class="panel span-7" id="opinion-timeline-panel"><div class="panel-head"><div><h2 class="panel-title">情绪时序</h2><div class="panel-desc">按日期观察评论中的正向、中性、负向波动。</div></div></div><div class="chart" id="opinion-timeline-chart"></div></div>
+          <div class="panel span-4" id="opinion-risk-panel"><div class="panel-head"><div><h2 class="panel-title">风险关键词</h2><div class="panel-desc">帮助发现争议、翻车、营销质疑等风险语义。</div></div></div><div class="chart short" id="opinion-risk-chart"></div></div>
+          <div class="panel span-8" id="opinion-controversy-panel"><div class="panel-head"><div><h2 class="panel-title">争议笔记</h2><div class="panel-desc">结合评论量、负面占比与讨论热度识别高争议内容。</div></div></div><div class="table-wrap" id="opinion-controversy-table"></div></div>
+          <div class="panel" id="opinion-comments-panel"><div class="panel-head"><div><h2 class="panel-title">高热负向评论</h2><div class="panel-desc">从负向评论里再按点赞排序，观察真正被用户放大的风险声音。</div></div></div><div class="table-wrap" id="opinion-comments-table"></div></div>
+        </div>
+      </section>
+      <section class="page" data-page="content">
+        <div class="grid">
+          <div class="panel" id="content-score-panel"><div class="panel-head"><div><h2 class="panel-title">内容质量视角</h2><div class="panel-desc">把内容完整度、传播表现和讨论热度拆开看，再合成为综合质量分。</div></div></div><div class="legend-grid" id="content-score-cards"></div></div>
+          <div class="panel span-6" id="content-keyword-panel"><div class="panel-head"><div><h2 class="panel-title">高频关键词</h2><div class="panel-desc">从笔记文本抽取高频词，观察内容主题集中在哪些语义区域。</div></div></div><div class="chart" id="content-keyword-chart"></div></div>
+          <div class="panel span-6" id="content-tag-panel"><div class="panel-head"><div><h2 class="panel-title">热门标签</h2><div class="panel-desc">标签频次可以辅助判断种草主题与内容表达习惯。</div></div></div><div class="chart" id="content-tag-chart"></div></div>
+          <div class="panel span-4" id="content-qualitydist-panel"><div class="panel-head"><div><h2 class="panel-title">质量分层</h2><div class="panel-desc">S/A/B/C/D 五档分层，快速判断样本质量结构。</div></div></div><div class="chart short" id="content-qualitydist-chart"></div></div>
+          <div class="panel span-8" id="content-scatter-panel"><div class="panel-head"><div><h2 class="panel-title">正文长度与互动关系</h2><div class="panel-desc">把正文长度、互动量和质量分叠在一个散点图里，观察内容深度与传播表现的关系。</div></div></div><div class="chart" id="content-scatter-chart"></div></div>
+          <div class="panel" id="content-topquality-panel"><div class="panel-head"><div><h2 class="panel-title">高质量内容样本</h2><div class="panel-desc">可作为后续选题、模仿或案例分析的重点对象。</div></div></div><div class="table-wrap" id="content-topquality-table"></div></div>
+        </div>
+      </section>
+      <section class="page" data-page="relationship">
+        <div class="grid">
+          <div class="panel" id="relationship-highlight-panel"><div class="panel-head"><div><h2 class="panel-title">关联挖掘</h2><div class="panel-desc">重点看内容质量分、点赞、评论、收藏、分享之间的相关程度，并用简单机器学习模型估计内容侧特征的影响力。</div></div></div><div class="legend-grid" id="relationship-highlights"></div></div>
+          <div class="panel span-7" id="relationship-heatmap-panel"><div class="panel-head"><div><h2 class="panel-title">相关性热力图</h2><div class="panel-desc">颜色越深，说明两个指标变化越同步。</div></div></div><div class="chart" id="relationship-heatmap-chart"></div></div>
+          <div class="panel span-5" id="relationship-feature-panel"><div class="panel-head"><div><h2 class="panel-title">机器学习特征影响力</h2><div class="panel-desc">使用简单线性模型探索内容侧特征对互动量的解释能力。</div></div></div><div class="chart" id="relationship-feature-chart"></div></div>
+          <div class="panel span-6" id="relationship-scatter-panel"><div class="panel-head"><div><h2 class="panel-title">点赞与评论散点</h2><div class="panel-desc">点越大表示收藏越高，颜色越暖代表综合质量分越高。</div></div></div><div class="chart" id="relationship-scatter-chart"></div></div>
+          <div class="panel span-6" id="relationship-pair-panel"><div class="panel-head"><div><h2 class="panel-title">最强指标对</h2><div class="panel-desc">把最值得写进论文和报告里的高相关组合直接列出来。</div></div></div><div class="table-wrap" id="relationship-pair-table"></div></div>
+        </div>
+      </section>
+      <section class="page" data-page="clusters">
+        <div class="grid">
+          <div class="panel span-7" id="cluster-scatter-panel"><div class="panel-head"><div><h2 class="panel-title">内容聚类散点</h2><div class="panel-desc">使用无监督聚类，把样本自动分成不同风格的内容群组。</div></div></div><div class="chart" id="cluster-scatter-chart"></div></div>
+          <div class="panel span-5" id="cluster-radar-panel"><div class="panel-head"><div><h2 class="panel-title">聚类画像雷达</h2><div class="panel-desc">对比每一簇在质量、传播、讨论与负面占比上的差异。</div></div></div><div class="chart" id="cluster-radar-chart"></div></div>
+          <div class="panel" id="cluster-table-panel"><div class="panel-head"><div><h2 class="panel-title">聚类摘要</h2><div class="panel-desc">每一簇都会给出命名、均值画像和代表样本，便于落地成内容策略。</div></div></div><div class="table-wrap" id="cluster-table"></div></div>
+        </div>
+      </section>
+      <section class="page" data-page="assets">
+        <div class="grid">
+          <div class="panel" id="asset-summary-panel"><div class="panel-head"><div><h2 class="panel-title">数据资产</h2><div class="panel-desc">这一页只保留后台预处理结果、异常提示和表单格式兼容情况，避免在主分析页抢重点。</div></div><div class="panel-tag" id="asset-generated-at">等待加载</div></div><div class="mini-grid" id="asset-summary-cards"></div></div>
+          <div class="panel span-5" id="asset-warning-panel"><div class="panel-head"><div><h2 class="panel-title">预处理提示</h2><div class="panel-desc">有异常才提示，没有异常就保持安静。</div></div></div><div class="warn-list" id="asset-warning-list"></div></div>
+          <div class="panel span-7" id="asset-file-panel"><div class="panel-head"><div><h2 class="panel-title">清洗产物</h2><div class="panel-desc">分析系统当前消费的是这三份标准化输出。</div></div></div><div class="table-wrap" id="asset-file-table"></div></div>
+          <div class="panel" id="asset-schema-panel"><div class="panel-head"><div><h2 class="panel-title">表单格式兼容</h2><div class="panel-desc">同格式文件先合并再清洗，结构差异集中在这里排查。</div></div></div><div class="table-wrap" id="asset-schema-table"></div></div>
+        </div>
+      </section>
+    `;
   }
-}
 
-let crawlStatusTimer = null;
-
-async function startCrawl() {
-  const payload = collectCrawlForm();
-  if (!payload.keywords) {
-    alert('请输入搜索关键词');
-    return;
+  function fmt(value) {
+    if (value === null || value === undefined || value === '') return '-';
+    const num = Number(value);
+    return Number.isFinite(num) ? num.toLocaleString('zh-CN') : String(value);
   }
 
-  if (payload.login_type === 'cookie' && !payload.cookies && !payload.web_session) {
-    const keepGoing = confirm('当前没有在表单里填写新的 Cookie，是否继续尝试使用已保存的 Cookie？');
-    if (!keepGoing) return;
+  function pct(value) {
+    return `${Number(value || 0).toFixed(2)}%`;
   }
 
-  $('btn-start-crawl').disabled = true;
-  $('btn-start-crawl').textContent = '启动中...';
+  function escapeHtml(value) {
+    return String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
 
-  try {
-    const res = await fetch('/api/crawler/start', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify(payload)
+  async function fetchJSON(url, options) {
+    const response = await fetch(url, options);
+    if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
+    return response.json();
+  }
+
+  function setLoading(flag) {
+    $('loading').classList.toggle('hidden', !flag);
+  }
+
+  function renderTable(headers, rows, emptyText = '暂无数据') {
+    if (!rows.length) return `<div style="padding:20px;color:var(--muted)">${escapeHtml(emptyText)}</div>`;
+    return `<table><thead><tr>${headers.map((h) => `<th>${escapeHtml(h)}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody></table>`;
+  }
+
+  function metricBox(label, value, sub) {
+    return `<div class="metric-card"><small>${escapeHtml(label)}</small><strong>${escapeHtml(value)}</strong><span>${escapeHtml(sub)}</span></div>`;
+  }
+
+  function miniBox(label, value, sub) {
+    return `<div class="mini-card"><small>${escapeHtml(label)}</small><strong>${escapeHtml(value)}</strong><span>${escapeHtml(sub)}</span></div>`;
+  }
+
+  function chartOption(id, option) {
+    if (charts[id]) charts[id].dispose();
+    const instance = echarts.init($(id));
+    instance.setOption(option);
+    charts[id] = instance;
+  }
+
+  function disposeCharts() {
+    Object.keys(charts).forEach((key) => {
+      charts[key]?.dispose?.();
+      delete charts[key];
     });
-    const data = await res.json();
-
-    if (!data.success) {
-      alert(data.message || '启动失败');
-      $('btn-start-crawl').disabled = false;
-      $('btn-start-crawl').textContent = '启动爬虫';
-      return;
-    }
-
-    $('crawl-status').style.display = 'block';
-    $('btn-start-crawl').textContent = '运行中';
-    $('btn-stop-crawl').disabled = false;
-    $('crawl-status-tag').textContent = '运行中';
-    $('crawl-status-tag').style.background = 'var(--green)';
-    $('crawl-status-tag').style.color = 'white';
-
-    if (crawlStatusTimer) clearInterval(crawlStatusTimer);
-    crawlStatusTimer = setInterval(updateCrawlStatus, 3000);
-  } catch (e) {
-    alert('请求失败: ' + e);
-    $('btn-start-crawl').disabled = false;
-    $('btn-start-crawl').textContent = '启动爬虫';
   }
-}
 
-async function stopCrawl() {
-  try {
-    const res = await fetch('/api/crawler/stop', { method: 'POST' });
-    const data = await res.json();
-    if (!data.success) {
-      alert(data.message || '停止失败');
-      return;
-    }
-    $('btn-start-crawl').disabled = false;
-    $('btn-start-crawl').textContent = '启动爬虫';
-    $('btn-stop-crawl').disabled = true;
-    $('crawl-status-tag').textContent = '已停止';
-    $('crawl-status-tag').style.background = 'var(--card2)';
-    if (crawlStatusTimer) {
-      clearInterval(crawlStatusTimer);
-      crawlStatusTimer = null;
-    }
-  } catch (e) {
-    alert('停止失败: ' + e);
-  }
-}
-
-async function updateCrawlStatus() {
-  try {
-    const res = await fetch('/api/crawler/status');
-    const data = await res.json();
-    $('crawl-runtime').textContent = formatRuntime(data.runtime || 0);
-    $('crawl-notes').textContent = data.notes_collected || 0;
-    $('crawl-comments').textContent = data.comments_collected || 0;
-    $('crawl-logs').textContent = (data.recent_logs || []).join('\n');
-    $('crawl-logs').scrollTop = $('crawl-logs').scrollHeight;
-
-    if (data.status === 'stopped') {
-      $('crawl-status-tag').textContent = '已完成';
-      $('crawl-status-tag').style.background = 'var(--card2)';
-      $('btn-start-crawl').disabled = false;
-      $('btn-start-crawl').textContent = '启动爬虫';
-      $('btn-stop-crawl').disabled = true;
-      if (crawlStatusTimer) {
-        clearInterval(crawlStatusTimer);
-        crawlStatusTimer = null;
-      }
-      await loadAll();
-    }
-  } catch (e) {
-    console.error('状态更新失败:', e);
-  }
-}
-
-function formatRuntime(seconds) {
-  if (!seconds) return '0秒';
-  if (seconds < 60) return seconds + '秒';
-  if (seconds < 3600) return Math.floor(seconds / 60) + '分' + (seconds % 60) + '秒';
-  return Math.floor(seconds / 3600) + '小时' + Math.floor((seconds % 3600) / 60) + '分';
-}
-
-async function refreshLogs() {
-  await updateCrawlStatus();
-}
-
-async function startLogin(force = false) {
-  $('btn-login').disabled = true;
-  $('btn-login').textContent = '正在启动浏览器...';
-
-  try {
-    const res = await fetch('/api/login/qrcode', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ force })
+  function initNav() {
+    $('main-nav').innerHTML = NAV_ITEMS.map((item) => `
+      <button class="nav-btn${item.id === currentPage ? ' active' : ''}" data-page="${item.id}">
+        ${item.label}
+      </button>
+    `).join('');
+    $('main-nav').querySelectorAll('[data-page]').forEach((button) => {
+      button.addEventListener('click', () => switchPage(button.dataset.page, true));
     });
-    const data = await res.json();
-
-    if (!data.success) {
-      if (data.can_force && confirm('登录窗口已在运行，是否强制关闭并重新打开？')) {
-        await fetch('/api/login/stop', { method: 'POST' });
-        await new Promise(r => setTimeout(r, 1000));
-        startLogin(true);
-        return;
-      }
-      $('login-tips').innerHTML = `<span style="color:var(--xhs-red)">${data.message || '启动失败'}</span>`;
-      $('btn-login').disabled = false;
-      $('btn-login').textContent = '打开扫码登录';
-      return;
-    }
-
-    $('login-tips').innerHTML = '<span style="color:var(--green)">已打开浏览器窗口，请使用小红书 APP 扫描二维码登录</span>';
-    $('login-status-tag').textContent = '扫码中';
-    $('login-status-tag').style.background = 'var(--yellow)';
-    setTimeout(checkLoginStatus, 5000);
-  } catch (e) {
-    $('login-tips').innerHTML = '<span style="color:var(--xhs-red)">请求失败: ' + e + '</span>';
-    $('btn-login').disabled = false;
-    $('btn-login').textContent = '打开扫码登录';
-  }
-}
-
-async function checkLoginStatus() {
-  try {
-    const res = await fetch('/api/login/status');
-    const data = await res.json();
-
-    if (data.status === 'success') {
-      $('login-status-tag').textContent = '已登录';
-      $('login-status-tag').style.background = 'var(--green)';
-      $('login-status-tag').style.color = 'white';
-      $('login-tips').innerHTML = '<span style="color:var(--green)">登录成功！凭证已自动保存，现在可以启动爬虫了</span>';
-      $('btn-login').textContent = '已登录';
-      $('crawl-login-type').value = 'cookie';
-      await loadAll();
-    } else if (data.status === 'failed') {
-      $('login-status-tag').textContent = '登录失败';
-      $('login-status-tag').style.background = 'var(--xhs-red)';
-      $('login-tips').innerHTML = '<span style="color:var(--xhs-red)">登录失败，请重试</span>';
-      $('btn-login').disabled = false;
-      $('btn-login').textContent = '打开扫码登录';
-    } else if (data.status === 'waiting' || data.status === 'starting') {
-      setTimeout(checkLoginStatus, 3000);
-    } else {
-      $('login-status-tag').textContent = '未登录';
-      $('login-status-tag').style.background = 'var(--card2)';
-      $('btn-login').disabled = false;
-      $('btn-login').textContent = '打开扫码登录';
-    }
-  } catch (e) {
-    console.error('登录状态检查失败:', e);
-    $('btn-login').disabled = false;
-    $('btn-login').textContent = '打开扫码登录';
-  }
-}
-
-async function stopLogin() {
-  try {
-    await fetch('/api/login/stop', { method: 'POST' });
-    $('login-status-tag').textContent = '已停止';
-    $('login-status-tag').style.background = 'var(--card2)';
-    $('login-tips').innerHTML = '<span style="color:var(--muted)">登录流程已停止</span>';
-    $('btn-login').disabled = false;
-    $('btn-login').textContent = '打开扫码登录';
-  } catch (e) {
-    alert('停止失败: ' + e);
-  }
-}
-
-async function saveConfig() {
-  const payload = collectCrawlForm();
-  if (!payload.keywords && !payload.cookies && !payload.web_session) {
-    alert('请至少填写关键词或 Cookie 凭证中的一项');
-    return;
   }
 
-  try {
-    const res = await fetch('/api/config/save', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify(payload)
+  function renderIndexBar() {
+    const page = NAV_ITEMS.find((item) => item.id === currentPage);
+    $('page-index').innerHTML = (page?.anchors || []).map((anchorId) => {
+      const title = document.querySelector(`#${anchorId} .panel-title`)?.textContent || '定位';
+      return `<button class="index-chip" onclick="document.getElementById('${anchorId}').scrollIntoView({behavior:'smooth',block:'start'})">${escapeHtml(title)}</button>`;
+    }).join('');
+  }
+
+  function switchPage(pageId, updateHash = false) {
+    currentPage = pageId;
+    document.querySelectorAll('.page').forEach((page) => {
+      page.classList.toggle('active', page.dataset.page === pageId);
     });
-    const data = await res.json();
-
-    if (!data.success) {
-      alert('保存失败: ' + data.message);
-      return;
+    document.querySelectorAll('.nav-btn').forEach((btn) => {
+      btn.classList.toggle('active', btn.dataset.page === pageId);
+    });
+    renderIndexBar();
+    if (updateHash) history.replaceState(null, '', `#${pageId}`);
+    if (!renderedPages.has(pageId)) {
+      renderPage(pageId);
+      renderedPages.add(pageId);
     }
-
-    alert('配置已保存');
-    loadAll();
-  } catch (e) {
-    alert('请求失败: ' + e);
+    setTimeout(() => Object.values(charts).forEach((chart) => chart?.resize?.()), 50);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
-}
 
+  function renderPage(pageId) {
+    const renderers = {
+      overview: renderOverview,
+      opinion: renderOpinion,
+      content: renderContent,
+      relationship: renderRelationship,
+      clusters: renderClusters,
+      assets: renderAssets
+    };
+    const renderer = renderers[pageId];
+    if (renderer && dashboard) renderer(dashboard);
+  }
 
-// 启动
-init();
+  function renderHero(bundle) {
+    const kpis = bundle.analysis.overview.kpis;
+    $('hero-metrics').innerHTML = [
+      metricBox('分析笔记', fmt(kpis.note_count), '内容样本库'),
+      metricBox('分析评论', fmt(kpis.comment_count), '评论语料库'),
+      metricBox('平均质量分', fmt(kpis.avg_quality_score), '内容与传播综合评估'),
+      metricBox('总互动量', fmt(kpis.total_interactions), `更新于 ${bundle.project.generated_at}`)
+    ].join('');
+    $('brand-sub').textContent = `${fmt(kpis.note_count)} 篇笔记 · ${fmt(kpis.comment_count)} 条评论 · 更新于 ${bundle.project.generated_at}`;
+  }
+
+  function renderOverview(bundle) {
+    const overview = bundle.analysis.overview;
+    $('overview-tag').textContent = `作者 ${fmt(overview.kpis.author_count)} 人`;
+    $('overview-kpis').innerHTML = [
+      miniBox('样本笔记', fmt(overview.kpis.note_count), '纳入正式分析'),
+      miniBox('评论明细', fmt(overview.kpis.comment_count), '支持舆情监测'),
+      miniBox('平均传播分', fmt(overview.kpis.avg_engagement_score), '传播表现维度'),
+      miniBox('平均质量分', fmt(overview.kpis.avg_quality_score), '内容与传播综合')
+    ].join('');
+
+    chartOption('overview-trend-chart', {
+      tooltip: { trigger: 'axis' },
+      grid: { left: 36, right: 24, top: 18, bottom: 36 },
+      xAxis: { type: 'category', data: overview.publish_trend.map((item) => item.date), axisLabel: { color: '#6d777e', rotate: 30 } },
+      yAxis: { type: 'value', axisLabel: { color: '#6d777e' }, splitLine: { lineStyle: { color: '#eadfd0' } } },
+      series: [{ type: 'line', smooth: true, areaStyle: { color: 'rgba(188,75,47,0.12)' }, lineStyle: { width: 3, color: '#bc4b2f' }, itemStyle: { color: '#bc4b2f' }, data: overview.publish_trend.map((item) => item.note_count) }]
+    });
+
+    chartOption('overview-type-chart', {
+      tooltip: { trigger: 'item' },
+      series: [{ type: 'pie', radius: ['40%', '72%'], label: { formatter: '{b}\n{d}%' }, data: overview.type_distribution.map((item) => ({ name: item.name, value: item.value })), color: ['#bc4b2f', '#295c89'] }]
+    });
+
+    chartOption('overview-region-chart', {
+      tooltip: { trigger: 'axis' },
+      grid: { left: 56, right: 18, top: 16, bottom: 26 },
+      xAxis: { type: 'value', splitLine: { lineStyle: { color: '#eadfd0' } }, axisLabel: { color: '#6d777e' } },
+      yAxis: { type: 'category', data: overview.province_rank.map((item) => item.name), axisLabel: { color: '#6d777e' } },
+      series: [{ type: 'bar', data: overview.province_rank.map((item) => item.interaction_count), itemStyle: { color: '#1f756a', borderRadius: [0, 8, 8, 0] } }]
+    });
+
+    $('overview-author-table').innerHTML = renderTable(
+      ['作者', '笔记数', '平均质量分', '互动总量'],
+      overview.top_authors.map((item) => `<tr><td><strong>${escapeHtml(item.nickname)}</strong></td><td>${fmt(item.note_count)}</td><td>${fmt(item.avg_quality_score)}</td><td>${fmt(item.interaction_total)}</td></tr>`)
+    );
+
+    $('overview-topnotes-table').innerHTML = renderTable(
+      ['标题', '作者', '质量分', '总互动', '日期'],
+      overview.top_notes.map((item) => `<tr><td><strong>${escapeHtml(item.title)}</strong></td><td>${escapeHtml(item.nickname || '-')}</td><td>${fmt(item.quality_score)}</td><td>${fmt(item.interaction_count)}</td><td>${escapeHtml(item.publish_date || '-')}</td></tr>`)
+    );
+  }
+
+  function renderOpinion(bundle) {
+    const opinion = bundle.analysis.opinion;
+    $('opinion-metrics').innerHTML = [
+      miniBox('正向评论', fmt(opinion.comment_sentiment.positive), '评论层情绪'),
+      miniBox('中性评论', fmt(opinion.comment_sentiment.neutral), '评论层情绪'),
+      miniBox('负向评论', fmt(opinion.comment_sentiment.negative), '舆情风险入口')
+    ].join('');
+
+    chartOption('opinion-distribution-chart', {
+      tooltip: { trigger: 'item' },
+      legend: { bottom: 0, textStyle: { color: '#6d777e' } },
+      series: [
+        { name: '笔记情绪', type: 'pie', radius: ['38%', '55%'], center: ['30%', '44%'], label: { formatter: '笔记\n{d}%' }, data: [{ name: '正向', value: opinion.note_sentiment.positive }, { name: '中性', value: opinion.note_sentiment.neutral }, { name: '负向', value: opinion.note_sentiment.negative }] },
+        { name: '评论情绪', type: 'pie', radius: ['38%', '55%'], center: ['74%', '44%'], label: { formatter: '评论\n{d}%' }, data: [{ name: '正向', value: opinion.comment_sentiment.positive }, { name: '中性', value: opinion.comment_sentiment.neutral }, { name: '负向', value: opinion.comment_sentiment.negative }] }
+      ],
+      color: ['#1f756a', '#c8b88f', '#bc4b2f']
+    });
+
+    chartOption('opinion-timeline-chart', {
+      tooltip: { trigger: 'axis' },
+      legend: { top: 4, textStyle: { color: '#6d777e' } },
+      grid: { left: 36, right: 24, top: 46, bottom: 36 },
+      xAxis: { type: 'category', data: opinion.timeline.map((item) => item.date), axisLabel: { color: '#6d777e', rotate: 30 } },
+      yAxis: { type: 'value', splitLine: { lineStyle: { color: '#eadfd0' } }, axisLabel: { color: '#6d777e' } },
+      series: [
+        { name: '正向', type: 'line', smooth: true, data: opinion.timeline.map((item) => item.positive), color: '#1f756a' },
+        { name: '中性', type: 'line', smooth: true, data: opinion.timeline.map((item) => item.neutral), color: '#9a6b10' },
+        { name: '负向', type: 'line', smooth: true, data: opinion.timeline.map((item) => item.negative), color: '#bc4b2f' }
+      ]
+    });
+
+    chartOption('opinion-risk-chart', {
+      tooltip: { trigger: 'axis' },
+      grid: { left: 80, right: 20, top: 20, bottom: 20 },
+      xAxis: { type: 'value', axisLabel: { color: '#6d777e' }, splitLine: { lineStyle: { color: '#eadfd0' } } },
+      yAxis: { type: 'category', data: opinion.risk_keywords.map((item) => item.name), axisLabel: { color: '#6d777e' } },
+      series: [{ type: 'bar', data: opinion.risk_keywords.map((item) => item.value), itemStyle: { color: '#bc4b2f', borderRadius: [0, 8, 8, 0] } }]
+    });
+
+    $('opinion-controversy-table').innerHTML = renderTable(
+      ['笔记', '作者', '讨论热度', '负面占比', '评论数', '风险词'],
+      opinion.controversial_notes.map((item) => `<tr><td><strong>${escapeHtml(item.title)}</strong></td><td>${escapeHtml(item.nickname || '-')}</td><td>${fmt(item.discussion_score)}</td><td>${pct(item.negative_ratio)}</td><td>${fmt(item.comment_actual_count)}</td><td>${escapeHtml((item.risk_keywords || []).join(' / ') || '-')}</td></tr>`)
+    );
+
+    $('opinion-comments-table').innerHTML = renderTable(
+      ['评论内容', '用户', '点赞', '日期'],
+      opinion.negative_comments.map((item) => `<tr><td><strong>${escapeHtml(item.content)}</strong></td><td>${escapeHtml(item.nickname || '-')}</td><td>${fmt(item.like_count)}</td><td>${escapeHtml(item.create_date || '-')}</td></tr>`)
+    );
+  }
+
+  function renderContent(bundle) {
+    const content = bundle.analysis.content;
+    const text = bundle.text;
+    $('content-score-cards').innerHTML = [
+      miniBox('平均内容分', fmt(content.score_breakdown.content_score), '内容结构与表达'),
+      miniBox('平均传播分', fmt(content.score_breakdown.engagement_score), '互动指标综合'),
+      miniBox('平均讨论分', fmt(content.score_breakdown.discussion_score), '评论热度与争议'),
+      miniBox('平均综合分', fmt(content.score_breakdown.quality_score), '平台自定义质量模型')
+    ].join('');
+
+    chartOption('content-keyword-chart', {
+      tooltip: { trigger: 'axis' },
+      grid: { left: 70, right: 20, top: 24, bottom: 20 },
+      xAxis: { type: 'value', splitLine: { lineStyle: { color: '#eadfd0' } }, axisLabel: { color: '#6d777e' } },
+      yAxis: { type: 'category', data: text.note_keywords.map((item) => item[0]).reverse(), axisLabel: { color: '#6d777e' } },
+      series: [{ type: 'bar', data: text.note_keywords.map((item) => item[1]).reverse(), itemStyle: { color: '#295c89', borderRadius: [0, 8, 8, 0] } }]
+    });
+
+    chartOption('content-tag-chart', {
+      tooltip: { trigger: 'axis' },
+      grid: { left: 70, right: 20, top: 24, bottom: 20 },
+      xAxis: { type: 'value', splitLine: { lineStyle: { color: '#eadfd0' } }, axisLabel: { color: '#6d777e' } },
+      yAxis: { type: 'category', data: text.hashtags.map((item) => item[0]).reverse(), axisLabel: { color: '#6d777e' } },
+      series: [{ type: 'bar', data: text.hashtags.map((item) => item[1]).reverse(), itemStyle: { color: '#9a6b10', borderRadius: [0, 8, 8, 0] } }]
+    });
+
+    chartOption('content-qualitydist-chart', {
+      tooltip: { trigger: 'item' },
+      series: [{ type: 'pie', radius: ['38%', '72%'], label: { formatter: '{b}\n{d}%' }, data: content.quality_distribution.map((item) => ({ name: item.name, value: item.value })), color: ['#1f756a', '#295c89', '#9a6b10', '#bc4b2f', '#8f979d'] }]
+    });
+
+    chartOption('content-scatter-chart', {
+      tooltip: { formatter: (params) => `${escapeHtml(params.data.name)}<br>正文长度：${params.data.value[0]}<br>总互动：${fmt(params.data.value[1])}<br>质量分：${fmt(params.data.value[2])}` },
+      grid: { left: 48, right: 24, top: 20, bottom: 36 },
+      xAxis: { type: 'value', name: '正文长度', nameTextStyle: { color: '#6d777e' }, splitLine: { lineStyle: { color: '#eadfd0' } }, axisLabel: { color: '#6d777e' } },
+      yAxis: { type: 'value', name: '总互动', nameTextStyle: { color: '#6d777e' }, splitLine: { lineStyle: { color: '#eadfd0' } }, axisLabel: { color: '#6d777e' } },
+      series: [{ type: 'scatter', symbolSize: (value) => Math.max(10, value[2] / 4), itemStyle: { color: '#bc4b2f', opacity: 0.78 }, data: content.content_vs_engagement }]
+    });
+
+    $('content-topquality-table').innerHTML = renderTable(
+      ['标题', '作者', '综合分', '内容分', '传播分', '分层'],
+      content.quality_top_notes.map((item) => `<tr><td><strong>${escapeHtml(item.title)}</strong></td><td>${escapeHtml(item.nickname || '-')}</td><td>${fmt(item.quality_score)}</td><td>${fmt(item.content_score)}</td><td>${fmt(item.engagement_score)}</td><td>${escapeHtml(item.quality_tier)}</td></tr>`)
+    );
+  }
+
+  function renderRelationship(bundle) {
+    const relation = bundle.analysis.relationship;
+    const topPairs = relation.strong_pairs.slice(0, 3);
+    $('relationship-highlights').innerHTML = topPairs.map((item) => `
+      <div class="mini-card"><small>${escapeHtml(item.left)} × ${escapeHtml(item.right)}</small><strong>${fmt(item.value)}</strong><span>相关系数越接近 1，联动越强</span></div>
+    `).join('') + `<div class="mini-card"><small>模型 R²</small><strong>${fmt(relation.model.r2)}</strong><span>内容侧特征对互动量的解释程度</span></div>`;
+
+    chartOption('relationship-heatmap-chart', {
+      tooltip: { position: 'top' },
+      grid: { height: '76%', top: '10%' },
+      xAxis: { type: 'category', data: relation.correlation.labels, splitArea: { show: true }, axisLabel: { color: '#6d777e', rotate: 35 } },
+      yAxis: { type: 'category', data: relation.correlation.labels, splitArea: { show: true }, axisLabel: { color: '#6d777e' } },
+      visualMap: { min: -1, max: 1, calculable: false, orient: 'horizontal', left: 'center', bottom: 0, inRange: { color: ['#295c89', '#f6f1e7', '#bc4b2f'] } },
+      series: [{ type: 'heatmap', data: relation.correlation.matrix, label: { show: true, formatter: (v) => Number(v.data[2]).toFixed(2) } }]
+    });
+
+    chartOption('relationship-feature-chart', {
+      tooltip: { trigger: 'axis' },
+      grid: { left: 70, right: 24, top: 18, bottom: 20 },
+      xAxis: { type: 'value', axisLabel: { color: '#6d777e' }, splitLine: { lineStyle: { color: '#eadfd0' } } },
+      yAxis: { type: 'category', data: relation.model.features.map((item) => item.label).reverse(), axisLabel: { color: '#6d777e' } },
+      series: [{ type: 'bar', data: relation.model.features.map((item) => item.importance).reverse(), itemStyle: { color: '#1f756a', borderRadius: [0, 8, 8, 0] } }]
+    });
+
+    chartOption('relationship-scatter-chart', {
+      tooltip: { formatter: (params) => `${escapeHtml(params.data.name)}<br>点赞：${fmt(params.data.value[0])}<br>评论：${fmt(params.data.value[1])}<br>收藏：${fmt(params.data.value[2])}<br>质量分：${fmt(params.data.value[3])}` },
+      grid: { left: 48, right: 24, top: 20, bottom: 36 },
+      xAxis: { type: 'value', name: '点赞', nameTextStyle: { color: '#6d777e' }, splitLine: { lineStyle: { color: '#eadfd0' } }, axisLabel: { color: '#6d777e' } },
+      yAxis: { type: 'value', name: '评论', nameTextStyle: { color: '#6d777e' }, splitLine: { lineStyle: { color: '#eadfd0' } }, axisLabel: { color: '#6d777e' } },
+      series: [{ type: 'scatter', symbolSize: (value) => Math.max(10, value[2] / 90), itemStyle: { color: '#bc4b2f', opacity: 0.72 }, data: relation.engagement_scatter }]
+    });
+
+    $('relationship-pair-table').innerHTML = renderTable(
+      ['指标 A', '指标 B', '相关系数'],
+      relation.strong_pairs.map((item) => `<tr><td><strong>${escapeHtml(item.left)}</strong></td><td>${escapeHtml(item.right)}</td><td>${fmt(item.value)}</td></tr>`)
+    );
+  }
+
+  function renderClusters(bundle) {
+    const clusters = bundle.analysis.clusters;
+    chartOption('cluster-scatter-chart', {
+      tooltip: { formatter: (params) => `${escapeHtml(params.data.name)}<br>综合质量：${fmt(params.data.value[0])}<br>传播表现：${fmt(params.data.value[1])}<br>讨论热度：${fmt(params.data.value[2])}<br>簇：${escapeHtml(params.data.cluster_name)}` },
+      grid: { left: 48, right: 24, top: 20, bottom: 36 },
+      xAxis: { type: 'value', name: '综合质量', nameTextStyle: { color: '#6d777e' }, splitLine: { lineStyle: { color: '#eadfd0' } }, axisLabel: { color: '#6d777e' } },
+      yAxis: { type: 'value', name: '传播表现', nameTextStyle: { color: '#6d777e' }, splitLine: { lineStyle: { color: '#eadfd0' } }, axisLabel: { color: '#6d777e' } },
+      series: clusters.summary.map((cluster, idx) => ({ name: cluster.cluster_name, type: 'scatter', symbolSize: 16, data: clusters.scatter.filter((item) => item.cluster_id === cluster.cluster_id), color: ['#bc4b2f', '#1f756a', '#295c89', '#9a6b10'][idx % 4] }))
+    });
+
+    chartOption('cluster-radar-chart', {
+      tooltip: {},
+      legend: { bottom: 0, textStyle: { color: '#6d777e' } },
+      radar: { indicator: clusters.radar.indicators, splitArea: { areaStyle: { color: ['#fffaf2', '#fff5e8'] } } },
+      series: [{ type: 'radar', data: clusters.radar.series.map((item, idx) => ({ name: item.name, value: item.value, areaStyle: { color: ['rgba(188,75,47,0.12)', 'rgba(31,117,106,0.12)', 'rgba(41,92,137,0.12)', 'rgba(154,107,16,0.12)'][idx % 4] } })) }]
+    });
+
+    $('cluster-table').innerHTML = renderTable(
+      ['聚类名称', '样本数', '平均质量', '平均传播', '平均讨论', '标签', '代表样本'],
+      clusters.summary.map((item) => `<tr><td><strong>${escapeHtml(item.cluster_name)}</strong></td><td>${fmt(item.note_count)}</td><td>${fmt(item.avg_quality_score)}</td><td>${fmt(item.avg_engagement_score)}</td><td>${fmt(item.avg_discussion_score)}</td><td>${escapeHtml((item.top_tags || []).join(' / ') || '-')}</td><td>${escapeHtml((item.sample_notes || []).map((sample) => sample.title).join('；') || '-')}</td></tr>`)
+    );
+  }
+
+  function renderAssets(bundle) {
+    const summary = bundle.summary;
+    const assets = bundle.assets;
+    $('asset-generated-at').textContent = bundle.project.generated_at;
+    $('asset-summary-cards').innerHTML = [
+      miniBox('原始文件数', fmt(summary.source_file_count), `格式组 ${fmt(summary.schema_group_count)}`),
+      miniBox('原始笔记行', fmt(summary.note_summary.raw_rows), `清洗后 ${fmt(summary.note_summary.clean_rows)}`),
+      miniBox('原始评论行', fmt(summary.comment_summary.raw_rows), `清洗后 ${fmt(summary.comment_summary.clean_rows)}`),
+      miniBox('重复评论移除', fmt(summary.comment_summary.duplicate_rows_removed), '后台完成，不占主页面')
+    ].join('');
+
+    $('asset-warning-list').innerHTML = (assets.warnings || []).length
+      ? assets.warnings.map((item) => `<div class="warn-item">${escapeHtml(item)}</div>`).join('')
+      : `<div class="warn-item">当前没有需要强调的结构性异常，说明预处理链路运行稳定。</div>`;
+
+    $('asset-file-table').innerHTML = renderTable(
+      ['产物', '路径'],
+      [
+        ['清洗笔记', assets.artifacts.notes_csv],
+        ['清洗评论', assets.artifacts.comments_csv],
+        ['预处理报告', assets.artifacts.report_json]
+      ].map((row) => `<tr><td><strong>${escapeHtml(row[0])}</strong></td><td><code>${escapeHtml(row[1])}</code></td></tr>`)
+    );
+
+    $('asset-schema-table').innerHTML = renderTable(
+      ['类型', '文件数', '原始行', '标准化后', '额外字段', '文件列表'],
+      assets.schema_groups.map((group) => `<tr><td><strong>${escapeHtml(group.kind)}</strong></td><td>${fmt(group.file_count)}</td><td>${fmt(group.raw_row_count)}</td><td>${fmt(group.normalized_row_count)}</td><td>${group.extra_columns.length ? escapeHtml(group.extra_columns.join(' / ')) : '-'}</td><td>${escapeHtml(group.files.join(' | '))}</td></tr>`)
+    );
+  }
+
+  async function loadDashboard() {
+    setLoading(true);
+    try {
+      dashboard = await fetchJSON('/api/dashboard');
+      disposeCharts();
+      buildPages();
+      renderHero(dashboard);
+      renderedPages.clear();
+      initNav();
+      const hashPage = location.hash.replace('#', '');
+      switchPage(NAV_ITEMS.some((item) => item.id === hashPage) ? hashPage : currentPage, false);
+    } catch (error) {
+      alert(`页面加载失败：${error.message}`);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function rebuildDataset() {
+    setLoading(true);
+    try {
+      const result = await fetchJSON('/api/rebuild', { method: 'POST' });
+      await loadDashboard();
+      alert(result.message || '数据同步完成');
+    } catch (error) {
+      alert(`数据同步失败：${error.message}`);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  window.addEventListener('hashchange', () => {
+    const hashPage = location.hash.replace('#', '');
+    if (NAV_ITEMS.some((item) => item.id === hashPage)) switchPage(hashPage, false);
+  });
+
+  window.addEventListener('resize', () => {
+    Object.values(charts).forEach((chart) => chart?.resize?.());
+  });
+
+  loadDashboard();
 </script>
 </body>
 </html>
-
-
-

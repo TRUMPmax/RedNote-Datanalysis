@@ -9,7 +9,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 MEDIA_CRAWLER_ROOT = PROJECT_ROOT / "MediaCrawler-main"
 
 if not MEDIA_CRAWLER_ROOT.exists():
-    print("未找到 MediaCrawler-main 目录，当前仓库默认以公开数据分析模式运行。")
+    print("未找到 MediaCrawler-main 目录。当前分析平台只消费 CrawlerData，这个脚本仅在需要调试爬虫登录态时使用。")
     raise SystemExit(0)
 
 sys.path.insert(0, str(MEDIA_CRAWLER_ROOT))

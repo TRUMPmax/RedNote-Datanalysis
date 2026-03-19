@@ -10,7 +10,7 @@ DB_PATH = PROJECT_ROOT / "MediaCrawler-main" / "schema" / "sqlite_tables.db"
 
 if not DB_PATH.exists():
     print(f"未找到 SQLite 数据库: {DB_PATH.relative_to(PROJECT_ROOT)}")
-    print("如果你使用的是当前公开数据版本，请直接查看 analysis_system/data/xhs 下的 CSV 数据。")
+    print("当前项目已经切换为 CrawlerData 驱动的分析链路，这个脚本只在需要查看 MediaCrawler 的 SQLite 结构时使用。")
     raise SystemExit(0)
 
 conn = sqlite3.connect(DB_PATH)
