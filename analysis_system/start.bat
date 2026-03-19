@@ -9,8 +9,12 @@ if "%SCRIPT_DIR:~-1%"=="\" set "SCRIPT_DIR=%SCRIPT_DIR:~0,-1%"
 cd /d "%SCRIPT_DIR%"
 
 set "PYTHON_BIN=python"
-if exist "%SCRIPT_DIR%\..\..\.venv\Scripts\python.exe" (
-    for %%I in ("%SCRIPT_DIR%\..\..\.venv\Scripts\python.exe") do set "PYTHON_BIN=%%~fI"
+set "PROJECT_VENV_PY=%SCRIPT_DIR%\..\.venv\Scripts\python.exe"
+if exist "%PROJECT_VENV_PY%" (
+    "%PROJECT_VENV_PY%" -c "import sys; raise SystemExit(0 if sys.version_info >= (3, 10) else 1)" >nul 2>&1
+    if not errorlevel 1 (
+        for %%I in ("%PROJECT_VENV_PY%") do set "PYTHON_BIN=%%~fI"
+    )
 )
 
 set "APP_URL=http://127.0.0.1:8080"
