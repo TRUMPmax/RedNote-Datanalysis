@@ -53,7 +53,8 @@ echo [1/4] Checking dependencies...
 "%PYTHON_BIN%" -c "import flask, jieba" >nul 2>&1
 if errorlevel 1 (
     echo     Installing requirements...
-    "%PYTHON_BIN%" -m pip install -r requirements.txt
+    echo     Using Tsinghua mirror for faster download...
+    "%PYTHON_BIN%" -m pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple --trusted-host pypi.tuna.tsinghua.edu.cn
     if errorlevel 1 (
         echo [ERROR] Failed to install requirements.
         pause
